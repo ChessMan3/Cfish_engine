@@ -157,7 +157,6 @@ struct Pos {
   // Pointers to thread-specific tables.
   HistoryStats *history;
   MoveStats *counterMoves;
-  FromToStats *fromTo;
   PawnEntry *pawnTable;
   MaterialEntry *materialTable;
   CounterMoveHistoryStats *counterMoveHistory;
