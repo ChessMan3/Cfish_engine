@@ -126,7 +126,7 @@ Value search_NonPV(Pos *pos, Stack *ss, Value alpha, Depth depth, int cutNode)
         update_cm_stats(ss-1, piece_on(prevSq), prevSq, -stat_bonus(depth + ONE_PLY));
       }
 	  // Penalty for a quiet ttMove that fails low
-    else if (ttValue < alpha && !is_capture_or_promotion(pos, ttMove))
+    else if (!is_capture_or_promotion(pos, ttMove))
       {
         Value penalty = -stat_bonus(depth + ONE_PLY);
         hs_update(*pos->history,pos_stm(), ttMove, penalty);
