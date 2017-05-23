@@ -408,7 +408,7 @@ moves_loop: // When in check search starts from here.
     {
       if (   !captureOrPromotion
           && !givesCheck
-          && !advanced_pawn_push(pos, move))
+          && (!advanced_pawn_push(pos, move) || pos->st->nonPawnMaterial[WHITE] + pos->st->nonPawnMaterial[BLACK] >= 5000))
       {
         // Move count based pruning
         if (moveCountPruning)
