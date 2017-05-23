@@ -28,7 +28,7 @@ Value search_NonPV(Pos *pos, Stack *ss, Value alpha, Depth depth, int cutNode)
   Depth extension, newDepth;
   Value bestValue, value, ttValue, eval;
   int ttHit, inCheck, givesCheck, singularExtensionNode, improving;
-  int captureOrPromotion, doFullDepthSearch, moveCountPruning;
+  int captureOrPromotion, doFullDepthSearch, moveCountPruning, skipQuiets;
   Piece moved_piece;
   int moveCount, quietCount;
 
@@ -317,10 +317,11 @@ moves_loop: // When in check search starts from here.
                          && !excludedMove // Recursive singular search is not allowed
                          && (tte_bound(tte) & BOUND_LOWER)
                          &&  tte_depth(tte) >= depth - 3 * ONE_PLY;
+   skipQuiets = false;						 
 
   // Step 11. Loop through moves
   // Loop through all pseudo-legal moves until no moves remain or a beta cutoff occurs
-  while ((move = next_move(pos))) {
+  while ((move = next_move(skipQuiets))) {
     assert(move_is_ok(move));
 
     if (move == excludedMove)
@@ -411,8 +412,10 @@ moves_loop: // When in check search starts from here.
           && (!advanced_pawn_push(pos, move) || pos_non_pawn_material(WHITE) + pos_non_pawn_material(BLACK) >= 5000))
       {
         // Move count based pruning
-        if (moveCountPruning)
+        if (moveCountPruning) {
+			skipQuiets = true;
           continue;
+		}
 
         // Reduced depth of the next LMR search
         int lmrDepth = max(newDepth - reduction(improving, depth, moveCount, NT), DEPTH_ZERO) / ONE_PLY;
