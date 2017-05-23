@@ -109,7 +109,7 @@ Value search_NonPV(Pos *pos, Stack *ss, Value alpha, Depth depth, int cutNode)
 	 
    Value stat_bonus(Depth depth) {
 	   int d = depth / ONE_PLY ;
-    return (Value)(d * d + 2 * d - 2);
+    return d > 17 ? 0 : (Value)(d * d + 2 * d - 2);
 	
    }
     // If ttMove is quiet, update move sorting heuristics on TT hit
@@ -608,7 +608,7 @@ moves_loop: // When in check search starts from here.
     Square prevSq = to_sq((ss-1)->currentMove);
     Value stat_bonus(Depth depth) {
 	int d = depth / ONE_PLY ;
-    return (Value)(d * d + 2 * d - 2);
+    return d > 17 ? 0 : (Value)(d * d + 2 * d - 2);
 	}
    
   if (!moveCount)

@@ -33,8 +33,6 @@
 INLINE void hs_update(HistoryStats hs, int c, Move m, Value v)
 {
   int w = v >= 0 ? v : -v;
-  if (w >= 324)
-        return;
 
   m &= 4095;
   hs[c][m] -= hs[c][m] * w / 324;
@@ -49,8 +47,6 @@ INLINE Value hs_get(HistoryStats hs, int c, Move m)
 INLINE void cms_update(CounterMoveStats cms, Piece pc, Square to, Value v)
 {
   int w = v >= 0 ? v : -v;
-  if (w >= 324)
-    return;
 
   cms[pc][to] -= cms[pc][to] * w / 936;
   cms[pc][to] += ((int)v) * 32;
