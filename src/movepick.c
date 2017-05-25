@@ -146,7 +146,7 @@ static void score_evasions(const Pos *pos)
 
 // next_move() returns the next pseudo-legal move to be searched.
 
-Move next_move(const Pos *pos)
+Move next_move(const Pos *pos, int skipQuiets)
 {
   Stack *st = pos->st;
   Move move;
@@ -211,12 +211,14 @@ Move next_move(const Pos *pos)
     st->stage++;
 
   case ST_QUIET:
-    while (st->cur < st->endMoves) {
-      move = (st->cur++)->move;
-      if (   move != st->ttMove && move != st->killers[0]
-          && move != st->killers[1] && move != st->countermove)
-        return move;
-    }
+    while (    st->cur < st->endMoves 
+ 	       && (!skipQuiets || st->cur->value >= VALUE_ZERO))
+ 	{ 
+ 	 move = (st->cur++)->move;
+ 	 if (   move != st->ttMove && move != st->killers[0]
+         && move != st->killers[1]  && move != st->countermove)
+          return move;
+ 	}
     st->stage++;
     st->cur = (st-1)->endMoves; // Return to bad captures.
 

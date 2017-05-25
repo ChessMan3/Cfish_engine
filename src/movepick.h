@@ -80,7 +80,7 @@ INLINE void cms_update(CounterMoveStats cms, Piece pc, Square to, Value v)
 #define ST_PROBCUT_GEN             20
 #define ST_PROBCUT_2               21
 
-Move next_move(const Pos *pos);
+Move next_move(const Pos *pos, int skipQuiets);
 
 // Initialisation of move picker data.
 
