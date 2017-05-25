@@ -269,7 +269,7 @@ Value search_NonPV(Pos *pos, Stack *ss, Value alpha, Depth depth, int cutNode)
 
     mp_init_pc(pos, ttMove, rbeta - ss->staticEval);
 
-    while ((move = next_move(pos)))
+    while ((move = next_move(pos,0)))
       if (is_legal(pos, move)) {
         ss->currentMove = move;
         ss->counterMoves = &(*pos->counterMoveHistory)[moved_piece(move)][to_sq(move)];
@@ -317,11 +317,11 @@ moves_loop: // When in check search starts from here.
                          && !excludedMove // Recursive singular search is not allowed
                          && (tte_bound(tte) & BOUND_LOWER)
                          &&  tte_depth(tte) >= depth - 3 * ONE_PLY;
-   skipQuiets = false;						 
+   skipQuiets = 0;			 
 
   // Step 11. Loop through moves
   // Loop through all pseudo-legal moves until no moves remain or a beta cutoff occurs
-  while ((move = next_move(skipQuiets))) {
+   while ((move = next_move(pos, skipQuiets))) {
     assert(move_is_ok(move));
 
     if (move == excludedMove)
@@ -413,7 +413,7 @@ moves_loop: // When in check search starts from here.
       {
         // Move count based pruning
         if (moveCountPruning) {
-			skipQuiets = true;
+			skipQuiets = 1;
           continue;
 		}
 
