@@ -84,8 +84,8 @@ struct Skill {
 //  Move best = 0;
 };
 
-// Easy move code for detecting an 'easy move'. If the PV is stable across
-// multiple search iterations, we can quickly return the best move.
+// EasyMoveManager structure is used to detect an 'easy move'. When the PV is stable
+// across multiple search iterations, we can quickly return the best move.
 
 struct {
   int stableCnt;
