@@ -301,9 +301,9 @@ Value search_NonPV(Pos *pos, Stack *ss, Value alpha, Depth depth, int cutNode)
 
 moves_loop: // When in check search starts from here.
   ;  // Avoid a compiler warning. A label must be followed by a statement.
-  CounterMoveStats *cmh  = (ss-1)->counterMoves;
-  CounterMoveStats *fmh  = (ss-2)->counterMoves;
-  CounterMoveStats *fmh2 = (ss-4)->counterMoves;
+  CounterMoveStats &cmh  = (ss-1)->counterMoves;
+  CounterMoveStats &fmh  = (ss-2)->counterMoves;
+  CounterMoveStats &fmh2 = (ss-4)->counterMoves;
 
   mp_init(pos, ttMove, depth);
   value = bestValue; // Workaround a bogus 'uninitialized' warning under gcc
@@ -423,9 +423,9 @@ moves_loop: // When in check search starts from here.
 
         // Countermoves based pruning
         if (   lmrDepth < 3
-            && (!cmh  || (*cmh )[moved_piece][to_sq(move)] < 0)
-            && (!fmh  || (*fmh )[moved_piece][to_sq(move)] < 0)
-            && (!fmh2 || (*fmh2)[moved_piece][to_sq(move)] < 0 || (cmh && fmh)))
+            && (!cmh  || cmh [moved_piece][to_sq(move)] < 0)
+            && (!fmh  || fmh [moved_piece][to_sq(move)] < 0)
+            && (!fm2  || fm2[moved_piece][to_sq(move)] < 0 || (cmh && fmh)))
           continue;
 
         // Futility pruning: parent node
@@ -488,7 +488,7 @@ moves_loop: // When in check search starts from here.
 
         ss->history =  (cmh  ? (*cmh )[moved_piece][to_sq(move)] : 0)
                      + (fmh  ? (*fmh )[moved_piece][to_sq(move)] : 0)
-                     + (fmh2 ? (*fmh2)[moved_piece][to_sq(move)] : 0)
+                     + (fm2  ? (*fmh2)[moved_piece][to_sq(move)] : 0)
                      + hs_get(*pos->history, pos_stm() ^ 1, move)
                      - 4000; // Correction factor.
 

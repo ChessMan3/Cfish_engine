@@ -109,9 +109,9 @@ static void score_quiets(const Pos *pos)
   Stack *st = pos->st;
   HistoryStats *history = pos->history;
 
-  CounterMoveStats *cmh = (st-1)->counterMoves;
-  CounterMoveStats *fmh = (st-2)->counterMoves;
-  CounterMoveStats *fmh2 = (st-4)->counterMoves;
+  CounterMoveStats &cmh = (st-1)->counterMoves;
+  CounterMoveStats &fmh = (st-2)->counterMoves;
+  CounterMoveStats &fm2 = (st-4)->counterMoves;
 
   CounterMoveStats *tmp = &(*pos->counterMoveHistory)[0][0];
   if (!cmh) cmh = tmp;
@@ -124,9 +124,9 @@ static void score_quiets(const Pos *pos)
     uint32_t move = m->move & 4095;
     uint32_t to = move & 63;
     uint32_t from = move >> 6;
-    m->value =  (*cmh)[piece_on(from)][to]
-              + (*fmh)[piece_on(from)][to]
-              + (*fmh2)[piece_on(from)][to]
+    m->value =  cmh[piece_on(from)][to]
+              + fmh[piece_on(from)][to]
+              + fm2[piece_on(from)][to]
               + hs_get(*history, c, move);
   }
 }
