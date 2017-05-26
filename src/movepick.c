@@ -25,17 +25,21 @@
 
 #define HistoryStats_Max ((Value)(1<<28))
 
-// Our insertion sort, which is guaranteed to be stable, as it should be.
+// An insertion sort, which sorts moves in descending order up to and including a given limit.
+// The order of moves smaller than the limit is left unspecified.
+// To keep the implementation simple, *begin is always included in the list of sorted moves.
 
-INLINE void insertion_sort(ExtMove *begin, ExtMove *end)
+INLINE void partial_insertion_sort(ExtMove *begin, ExtMove *end, Value limit)
 {
-  ExtMove tmp, *p, *q;
-
-  for (p = begin + 1; p < end; p++) {
-    tmp = *p;
-    for (q = p; q != begin && (q-1)->value < tmp.value; --q)
-      *q = *(q-1);
+  for (ExtMove *sortedEnd = begin + 1, *p = begin + 1; p < end; p++) 
+       if (p->value >= limit)
+  {
+    ExtMove tmp = *p, *q;
+	*p = *sortedEnd;
+    for (q = sortedEnd; q != begin && (q-1)->value < tmp.value; --q)
+    *q = *(q-1);
     *q = tmp;
+	++sortedEnd;
   }
 }
 
@@ -203,11 +207,8 @@ Move next_move(const Pos *pos, int skipQuiets)
     st->cur = st->endBadCaptures;
     st->endMoves = generate_quiets(pos, st->cur);
     score_quiets(pos);
-    if (st->depth < 3 * ONE_PLY) {
-      ExtMove *goodQuiet = partition(st->cur, st->endMoves);
-      insertion_sort(st->cur, goodQuiet);
-    } else
-      insertion_sort(st->cur, st->endMoves);
+    partial_insertion_sort(st->cur, st->endMoves,
+                           st->depth < 3 * ONE_PLY ? VALUE_ZERO : (Value)INT_MIN);
     st->stage++;
 
   case ST_QUIET:
