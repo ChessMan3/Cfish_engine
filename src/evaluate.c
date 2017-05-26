@@ -107,11 +107,6 @@ static const Score Outpost[][2] = {
 // no friendly pawn on the rook file.
 static const Score RookOnFile[2] = { S(20, 7), S(45, 20) };
 
-// ThreatBySafePawn[PieceType] contains bonuses according to which piece
-// type is attacked by a pawn which is protected or is not attacked.
-static const Score ThreatBySafePawn[8] = {
-  S(0, 0), S(0, 0), S(176, 139), S(131, 127), S(217, 218), S(203, 215) };
-
 // ThreatByMinor/ByRook[attacked PieceType] contains bonuses according to
 // which piece type attacks which one. Attacks on lesser pieces which are
 // pawn defended are not considered.
@@ -150,19 +145,20 @@ static const Score Protector[4][8] = {
 };
  
 // Assorted bonuses and penalties used by evaluation
-static const Score MinorBehindPawn     = S(16,  0);
-static const Score BishopPawns         = S( 8, 12);
-static const Score RookOnPawn          = S( 8, 24);
-static const Score TrappedRook         = S(92,  0);
-static const Score WeakQueen           = S(50, 10);
-static const Score OtherCheck          = S(10, 10);
-static const Score CloseEnemies        = S( 7,  0);
-static const Score PawnlessFlank       = S(20, 80);
-static const Score ThreatByHangingPawn = S(71, 61);
-static const Score ThreatByRank        = S(16,  3);
-static const Score Hanging             = S(48, 27);
-static const Score ThreatByPawnPush    = S(38, 22);
-static const Score HinderPassedPawn    = S( 7,  0);
+static const Score MinorBehindPawn     = S( 16,  0);
+static const Score BishopPawns         = S(  8, 12);
+static const Score RookOnPawn          = S(  8, 24);
+static const Score TrappedRook         = S( 92,  0);
+static const Score WeakQueen           = S( 50, 10);
+static const Score OtherCheck          = S( 10, 10);
+static const Score CloseEnemies        = S(  7,  0);
+static const Score PawnlessFlank       = S( 20, 80);
+static const Score ThreatByHangingPawn = S( 71, 61);
+static const Score ThreatBySafePawn    = S(182,175);
+static const Score ThreatByRank        = S( 16,  3);
+static const Score Hanging             = S( 48, 27);
+static const Score ThreatByPawnPush    = S( 38, 22);
+static const Score HinderPassedPawn    = S(  7,  0);
 
 // Penalty for a bishop on a1/h1 (a8/h8 for black) which is trapped by
 // a friendly pawn on b2/g2 (b7/g7 for black). This can obviously only
@@ -495,8 +491,7 @@ INLINE Score evaluate_threats(const Pos *pos, EvalInfo *ei, const int Us)
     if (weak ^ safeThreats)
       score += ThreatByHangingPawn;
 
-    while (safeThreats)
-      score += ThreatBySafePawn[piece_on(pop_lsb(&safeThreats)) - 8 * Them];
+    score += ThreatBySafePawn * popcount(safeThreats);
   }
 
   // Squares strongly protected by the opponent, either because they attack the
