@@ -33,9 +33,12 @@
 INLINE void hs_update(HistoryStats hs, int c, Move m, Value v)
 {
   int w = v >= 0 ? v : -v;
+  const int denom = 324;
+  
+  assert(w <= denom); // Needed for stability.
 
   m &= 4095;
-  hs[c][m] -= hs[c][m] * w / 324;
+  hs[c][m] -= hs[c][m] * w / denom;
   hs[c][m] += ((int)v) * 32;
 }
  
@@ -47,8 +50,11 @@ INLINE Value hs_get(HistoryStats hs, int c, Move m)
 INLINE void cms_update(CounterMoveStats cms, Piece pc, Square to, Value v)
 {
   int w = v >= 0 ? v : -v;
+  const int denom = 936;
+  
+  assert(w <= denom);
 
-  cms[pc][to] -= cms[pc][to] * w / 936;
+  cms[pc][to] -= cms[pc][to] * w / denom;
   cms[pc][to] += ((int)v) * 32;
 }
 
