@@ -64,6 +64,9 @@ static const int razor_margin[4] = { 483, 570, 603, 554 };
 static int FutilityMoveCounts[2][16]; // [improving][depth]
 static int Reductions[2][2][64][64];  // [pv][improving][depth][moveNumber]
 
+// Threshold used for countermoves based pruning.
+//const int CounterMovePruneThreshold = VALUE_ZERO;
+
 INLINE Depth reduction(int i, Depth d, int mn, const int NT)
 {
   return Reductions[NT][i][min(d / ONE_PLY, 63)][min(mn, 63)] * ONE_PLY;
