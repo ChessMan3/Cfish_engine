@@ -437,7 +437,7 @@ INLINE Score evaluate_king(const Pos *pos, EvalInfo *ei, int Us)
 
     // Transform the kingDanger units into a Score, and substract it from the evaluation
     if (kingDanger > 0)
-      score -= make_score(min(kingDanger * kingDanger / 4096, 2 * BishopValueMg), 0);
+      score -= make_score(kingDanger * kingDanger / 4096, 0);
   }
 
   // King tropism: firstly, find squares that we attack in the enemy king flank
