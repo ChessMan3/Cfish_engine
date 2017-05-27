@@ -107,9 +107,9 @@ Value search_NonPV(Pos *pos, Stack *ss, Value alpha, Depth depth, int cutNode)
  {
 	 // History and stats update bonus, based on depth
 	 
-   Value stat_bonus(Depth depth) {
+   int stat_bonus(Depth depth) {
 	   int d = depth / ONE_PLY ;
-    return d > 17 ? 0 : (Value)(d * d + 2 * d - 2);
+    return d > 17 ? 0 : d * d + 2 * d - 2;
 	
    }
     // If ttMove is quiet, update move sorting heuristics on TT hit
@@ -128,7 +128,7 @@ Value search_NonPV(Pos *pos, Stack *ss, Value alpha, Depth depth, int cutNode)
 	  // Penalty for a quiet ttMove that fails low
     else if (!is_capture_or_promotion(pos, ttMove))
       {
-        Value penalty = -stat_bonus(depth);
+        int penalty = -stat_bonus(depth);
         hs_update(*pos->history,pos_stm(), ttMove, penalty);
         update_cm_stats(ss, moved_piece(ttMove), to_sq(ttMove), penalty);
       }
@@ -493,10 +493,10 @@ moves_loop: // When in check search starts from here.
                      - 4000; // Correction factor.
 
         // Decrease/increase reduction by comparing with opponent's stat score.
-        if (ss->history > VALUE_ZERO && (ss-1)->history < VALUE_ZERO)
+        if (ss->history > 0 && (ss-1)->history < 0)
           r -= ONE_PLY;
 
-        else if (ss->history < VALUE_ZERO && (ss-1)->history > VALUE_ZERO)
+        else if (ss->history < 0 && (ss-1)->history > 0)
           r += ONE_PLY;
 
         // Decrease/increase reduction for moves with a good/bad history.
@@ -610,9 +610,9 @@ moves_loop: // When in check search starts from here.
   // search then return a fail low score.
    
     Square prevSq = to_sq((ss-1)->currentMove);
-    Value stat_bonus(Depth depth) {
+    int stat_bonus(Depth depth) {
 	int d = depth / ONE_PLY ;
-    return d > 17 ? 0 : (Value)(d * d + 2 * d - 2);
+    return d > 17 ? 0 : d * d + 2 * d - 2;
 	}
    
   if (!moveCount)
