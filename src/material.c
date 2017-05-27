@@ -48,9 +48,9 @@ static const int QuadraticTheirs[][8] = {
   { 101,  100, -37,   141,  268,    0 }  // Queen
 };
 
-// PawnsSet[count] contains a bonus/malus indexed by number of pawns
- const int PawnsSet[8+1] = { 
-    24, -32, 107, -51, 117, -9, -126, -21, 31
+// PawnSet[pawn count] contains a bonus/malus indexed by number of pawns
+ const int PawnSet[] = {
+   24, -32, 107, -51, 117, -9, -126, -21, 31
 };
 
 // Helper used to detect a given material distribution.
@@ -81,7 +81,8 @@ int imbalance(int us, int pieceCount[][8])
 {
   int *pc_us = pieceCount[us];
   int *pc_them = pieceCount[us ^ 1];
-  int bonus = PawnsSet[pieceCount[us][PAWN]];
+  
+  int bonus = PawnSet[pieceCount[us][PAWN]];
 
   // Second-degree polynomial material imbalance by Tord Romstad
   for (int pt1 = 0; pt1 <= QUEEN; pt1++) {

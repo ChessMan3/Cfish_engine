@@ -25,12 +25,12 @@
 
 #define HistoryStats_Max ((int)(1<<28))
 
-// An insertion sort, which sorts moves in descending order up to and including a given limit.
-// The order of moves smaller than the limit is left unspecified.
-// To keep the implementation simple, *begin is always included in the list of sorted moves.
+// partial_insertion_sort() sorts moves in descending order up to and including
+// a given limit. The order of moves smaller than the limit is left unspecified.
+// To keep the implementation simple, *begin is always included in the sorted moves.
 
-INLINE void partial_insertion_sort(ExtMove *begin, ExtMove *end, int limit)
-{
+INLINE void partial_insertion_sort(ExtMove *begin, ExtMove *end, int limit){
+	
   for (ExtMove *sortedEnd = begin + 1, *p = begin + 1; p < end; p++) 
        if (p->value >= limit)
   {

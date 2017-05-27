@@ -410,10 +410,11 @@ moves_loop: // When in check search starts from here.
     {
       if (   !captureOrPromotion
           && !givesCheck
-          && (!advanced_pawn_push(pos, move) || pos_non_pawn_material(WHITE) + pos_non_pawn_material(BLACK) >= 5000))
+          && (!advanced_pawn_push(pos, move) || pos_non_pawn_material(WHITE) + pos_non_pawn_material(BLACK) >= (Value)5000))
       {
         // Move count based pruning
-        if (moveCountPruning) {
+        if (moveCountPruning) 
+		{
 			skipQuiets = 1;
           continue;
 		}
@@ -636,7 +637,7 @@ moves_loop: // When in check search starts from here.
            && move_is_ok((ss-1)->currentMove))
             update_cm_stats(ss-1, piece_on(prevSq), prevSq, stat_bonus(depth));   
   
- if(!excludedMove)
+ if (!excludedMove)
   tte_save(tte, posKey, value_to_tt(bestValue, ss->ply),
            bestValue >= beta ? BOUND_LOWER :
            PvNode && bestMove ? BOUND_EXACT : BOUND_UPPER,
