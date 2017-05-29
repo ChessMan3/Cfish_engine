@@ -67,7 +67,7 @@ static uint8_t initial(unsigned idx)
   if (   distance(ksq[WHITE], ksq[BLACK]) <= 1
       || ksq[WHITE] == psq
       || ksq[BLACK] == psq
-      || (us == WHITE && (StepAttacksBB[PAWN][psq] & sq_bb(ksq[BLACK]))))
+      || (us == WHITE && (StepAttacksBB[W_PAWN][psq] & sq_bb(ksq[BLACK]))))
     return RES_INVALID;
 
   // Immediate win if a pawn can be promoted without getting captured
@@ -80,7 +80,7 @@ static uint8_t initial(unsigned idx)
 
   // Immediate draw if it is a stalemate or a king captures undefended pawn
   if (   us == BLACK
-      && (  !(StepAttacksBB[KING][ksq[us]] & ~(StepAttacksBB[KING][ksq[us ^ 1]] | StepAttacksBB[PAWN][psq]))
+      && (  !(StepAttacksBB[KING][ksq[us]] & ~(StepAttacksBB[KING][ksq[us ^ 1]] | StepAttacksBB[W_PAWN][psq]))
           || (StepAttacksBB[KING][ksq[us]] & sq_bb(psq) & ~StepAttacksBB[KING][ksq[us ^ 1]])))
     return RES_DRAW;
 
