@@ -56,7 +56,8 @@ const int skipSize[]  = { 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 
 const int skipPhase[] = { 0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 6, 7 };
 
 // Razoring and futility margin based on depth
-static const int razor_margin[4] = { 483, 570, 603, 554 };
+// razor_margin[0] is unused as long as depth >= ONE_PLY in search
+static const int razor_margin[] = { 0, 570, 603, 554 };
 
 #define futility_margin(d) ((Value)(150 * (d) / ONE_PLY))
 
