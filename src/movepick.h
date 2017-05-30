@@ -39,7 +39,7 @@ INLINE void hs_update(HistoryStats hs, int c, Move m, Value v)
 
   m &= 4095;
   hs[c][m] -= hs[c][m] * w / D;
-  hs[c][m] += ((int)v) * 32;
+  hs[c][m] += v * 32;
 }
  
 INLINE Value hs_get(HistoryStats hs, int c, Move m)
@@ -55,7 +55,7 @@ INLINE void cms_update(CounterMoveStats cms, Piece pc, Square to, Value v)
   assert(w <= D);
 
   cms[pc][to] -= cms[pc][to] * w / D;
-  cms[pc][to] += ((int)v) * 32;
+  cms[pc][to] += v * 32;
 }
 
 #define ST_MAIN_SEARCH             0
