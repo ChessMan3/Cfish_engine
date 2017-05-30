@@ -158,10 +158,12 @@ INLINE Score pawn_evaluate(const Pos *pos, PawnEntry *e, const int Us)
 	  
  	  else if (    stoppers == SquareBB[s + Up]
                    &&  relative_rank_s(Us, s) >= RANK_5
-                   && (b = (shift_bb(Up, supported) & ~theirPawns)))
+	  {
+                   b = shift_bb(Up, supported) & ~theirPawns;
               while (b)
                   if(!more_than_one(theirPawns & PawnAttacks[Us][pop_lsb(&b)]))
                      e->passedPawns[Us] |= sq_bb(s);
+      }				 
 				 
     // Score this pawn
     if (!neighbours)
