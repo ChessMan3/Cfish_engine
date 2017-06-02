@@ -34,6 +34,7 @@ Value name_NT_InCheck(qsearch)(Pos* pos, Stack* ss, Value alpha, BETA_ARG
   Value bestValue, value, ttValue, futilityValue, futilityBase, oldAlpha;
   int ttHit, givesCheck, evasionPrunable;
   Depth ttDepth;
+  int moveCount;
 
   if (PvNode) {
     oldAlpha = alpha; // To flag BOUND_EXACT when eval above alpha and no available moves
@@ -42,6 +43,7 @@ Value name_NT_InCheck(qsearch)(Pos* pos, Stack* ss, Value alpha, BETA_ARG
   }
 
   bestMove = 0;
+  moveCount = 0;
 
   // Check for an instant draw or if the maximum ply has been reached
   if (is_draw(pos) || ss->ply >= MAX_PLY)
@@ -116,6 +118,8 @@ Value name_NT_InCheck(qsearch)(Pos* pos, Stack* ss, Value alpha, BETA_ARG
     assert(move_is_ok(move));
 
     givesCheck = gives_check(pos, ss, move);
+	
+	moveCount++;
 
     // Futility pruning
     if (   !InCheck
@@ -139,7 +143,7 @@ Value name_NT_InCheck(qsearch)(Pos* pos, Stack* ss, Value alpha, BETA_ARG
 
     // Detect non-capture evasions that are candidates to be pruned
     evasionPrunable =    InCheck
-                     &&  depth != DEPTH_ZERO	
+                     &&  (depth != DEPTH_ZERO || moveCount > 2)	
                      &&  bestValue > VALUE_MATED_IN_MAX_PLY
                      && !is_capture(pos, move);
 
@@ -154,7 +158,10 @@ Value name_NT_InCheck(qsearch)(Pos* pos, Stack* ss, Value alpha, BETA_ARG
 
     // Check for legality just before making the move
     if (!is_legal(pos, move))
+    {
+      moveCount--;
       continue;
+    }
 
     ss->currentMove = move;
 
