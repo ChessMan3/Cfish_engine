@@ -49,7 +49,7 @@ static const int QuadraticTheirs[][8] = {
 };
 
 // PawnSet[pawn count] contains a bonus/malus indexed by number of pawns
- const int PawnSet[] = {
+static const int PawnSet[] = {
     24, -32, 107, -51, 117, -9, -126, -21, 31
 };
 
