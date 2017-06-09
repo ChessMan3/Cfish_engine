@@ -23,12 +23,13 @@
 #include "movepick.h"
 #include "thread.h"
 
-#define HistoryStats_Max ((Value)(1<<28))
+//#define HistoryStats_Max ((Value)(1<<28))
+
 
 // partial_insertion_sort() sorts moves in descending order up to and including
 // a given limit. The order of moves smaller than the limit is left unspecified.
 
-INLINE void partial_insertion_sort(ExtMove *begin, ExtMove *end, Value limit){
+INLINE void partial_insertion_sort(ExtMove *begin, ExtMove *end, int limit){
 
   for (ExtMove *sortedEnd = begin, *p = begin + 1; p < end; p++) 
        if (p->value >= limit)
@@ -128,6 +129,8 @@ static void score_quiets(const Pos *pos)
               + hs_get(*history, c, move);
   }
 }
+
+static const int HistoryStats_Max = 1 << 28;
 
 static void score_evasions(const Pos *pos)
 {
