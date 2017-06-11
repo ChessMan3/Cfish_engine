@@ -172,7 +172,7 @@ static const int KingAttackWeights[8] = { 0, 0, 78, 56, 45, 11 };
 #define KnightCheck       790
 
 // Threshold for lazy evaluation
-const Value LazyThreshold = (1500);
+const Value LazyThreshold = (Value)1500;
 
 // eval_init() initializes king and attack bitboards for a given color
 // adding pawn attacks. To be done at the beginning of the evaluation.
@@ -686,7 +686,7 @@ INLINE Value evaluate_initiative(const Pos *pos, int asymmetry, Value eg)
   // Now apply the bonus: note that we find the attacking side by extracting
   // the sign of the endgame value, and that we carefully cap the bonus so
   // that the endgame score will never change sign after the bonus.
-  Value value = ((eg > 0) - (eg < 0)) * max(initiative, -abs(eg));
+  int value = ((eg > 0) - (eg < 0)) * max(initiative, -abs(eg));
 
 //  return make_score(0, value);
   return value;
