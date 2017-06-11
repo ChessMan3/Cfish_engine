@@ -59,7 +59,13 @@ const int skipPhase[] = { 0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 
 // razor_margin[0] is unused as long as depth >= ONE_PLY in search
 static const int razor_margin[] = { 0, 570, 603, 554 };
 
-#define futility_margin(d) ((Value)(150 * (d) / ONE_PLY))
+//#define futility_margin(d) ((Value)(150 * (d) / ONE_PLY))
+
+int futility_margin(Depth d) 
+{ 
+assert(d > DEPTH_ZERO);
+ return  ((Value)(145 * d / ONE_PLY - 37));
+}
 
 // Futility and reductions lookup tables, initialized at startup
 static int FutilityMoveCounts[2][16]; // [improving][depth]
@@ -371,6 +377,8 @@ void thread_search(Pos *pos)
   RootMoves *rm = pos->rootMoves;
   multiPV = min(multiPV, rm->size);
 
+   int researches = 0; // counts the number of aspiration researches per rootDepth
+   
   // Iterative deepening loop until requested to stop or the target depth is reached.
   while (   (pos->rootDepth += ONE_PLY) < DEPTH_MAX
          && !Signals.stop
@@ -398,6 +406,9 @@ void thread_search(Pos *pos)
 
     int PVFirst = 0, PVLast = 0;
 
+	 int researchesLastRootDepth = researches;
+     researches = 0;
+	
     // MultiPV loop. We perform a full root search for each PV line
     for (int PVIdx = 0; PVIdx < multiPV && !Signals.stop; PVIdx++) {
       pos->PVIdx = PVIdx;
@@ -411,7 +422,7 @@ void thread_search(Pos *pos)
 
       // Reset aspiration window starting size
       if (pos->rootDepth >= 5 * ONE_PLY) {
-        delta = (Value)18;
+        delta = (Value)(16 + researchesLastRootDepth);
         alpha = max(rm->move[PVIdx].previousScore - delta,-VALUE_INFINITE);
         beta  = min(rm->move[PVIdx].previousScore + delta, VALUE_INFINITE);
       }
@@ -465,6 +476,8 @@ void thread_search(Pos *pos)
           break;
 
         delta += delta / 4 + 5;
+		if (PVIdx == 0)
+           	  researches++;
 
         assert(alpha >= -VALUE_INFINITE && beta <= VALUE_INFINITE);
       }
