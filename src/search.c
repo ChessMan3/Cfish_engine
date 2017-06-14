@@ -766,7 +766,8 @@ static void uci_print_pv(Pos *pos, Depth depth, Value alpha, Value beta)
     Depth d = updated ? depth : depth - ONE_PLY;
     Value v = updated ? rm->move[i].score : rm->move[i].previousScore;
 
-    int tb = TB_RootInTB && abs(v) < VALUE_MATE - MAX_PLY;
+	int w = v >= 0 ? v : -v;
+    int tb = TB_RootInTB && w < VALUE_MATE - MAX_PLY;
     if (tb) {
       int bound = option_value(OPT_SYZ_50_MOVE) ? 900 : 1;
       int rank = rm->move[i].TBRank;

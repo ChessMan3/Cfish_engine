@@ -14,6 +14,7 @@ Value search_PV(Pos *pos, Stack *ss, Value alpha, Value beta, Depth depth)
 Value search_NonPV(Pos *pos, Stack *ss, Value alpha, Depth depth, int cutNode)
 #endif
 {
+  int absBeta = beta >= 0 ? beta : -beta;
   int rootNode = PvNode && (ss-1)->ply == 0;
 
   assert(-VALUE_INFINITE <= alpha && alpha < beta && beta <= VALUE_INFINITE);
@@ -239,7 +240,7 @@ Value search_NonPV(Pos *pos, Stack *ss, Value alpha, Depth depth, int cutNode)
       if (nullValue >= VALUE_MATE_IN_MAX_PLY)
          nullValue = beta;
 
-      if (depth < 12 * ONE_PLY && abs(beta) < VALUE_KNOWN_WIN)
+      if (depth < 12 * ONE_PLY && absBeta < VALUE_KNOWN_WIN)
          return nullValue;
 
       // Do verification search at high depths
@@ -258,7 +259,7 @@ Value search_NonPV(Pos *pos, Stack *ss, Value alpha, Depth depth, int cutNode)
   // much above beta, we can (almost) safely prune the previous move.
   if (   !PvNode
       &&  depth >= 5 * ONE_PLY
-      &&  abs(beta) < VALUE_MATE_IN_MAX_PLY) {
+      &&  absBeta < VALUE_MATE_IN_MAX_PLY) {
 
     Value rbeta = min(beta + 200, VALUE_INFINITE);
     Depth rdepth = depth - 4 * ONE_PLY;

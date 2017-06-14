@@ -758,7 +758,8 @@ Value evaluate(const Pos *pos)
 
   // Early exit if score is high
   v = (mg_value(score) + eg_value(score)) / 2;
-  if (abs(v) > LazyThreshold)
+  int w = v >= 0 ? v : -v;
+  if (w > LazyThreshold)
      return pos_stm() == WHITE ? v : -v;
   
   // Initialize attack and king safety bitboards.
