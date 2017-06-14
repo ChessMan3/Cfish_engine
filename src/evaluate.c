@@ -676,6 +676,7 @@ INLINE Score evaluate_space(const Pos *pos, EvalInfo *ei, const int Us)
 // Since only eg is involved, we return a Value and not a Score.
 INLINE Value evaluate_initiative(const Pos *pos, int asymmetry, Value eg)
 {
+  int absEG = eg >= 0 ? eg : -eg;
   int kingDistance =  distance_f(square_of(WHITE, KING), square_of(BLACK, KING))
                     - distance_r(square_of(WHITE, KING), square_of(BLACK, KING));
   int bothFlanks = (pieces_p(PAWN) & QueenSide) && (pieces_p(PAWN) & KingSide);
@@ -686,7 +687,7 @@ INLINE Value evaluate_initiative(const Pos *pos, int asymmetry, Value eg)
   // Now apply the bonus: note that we find the attacking side by extracting
   // the sign of the endgame value, and that we carefully cap the bonus so
   // that the endgame score will never change sign after the bonus.
-  Value value = ((eg > 0) - (eg < 0)) * max(initiative, -abs(eg));
+  Value value = ((eg > 0) - (eg < 0)) * max(initiative, -absEG);
 
 //  return make_score(0, value);
   return value;
@@ -703,6 +704,7 @@ INLINE int evaluate_scale_factor(const Pos *pos, EvalInfo *ei, Value eg)
   // types of endgames, and use a lower scale for those.
   if (sf == SCALE_FACTOR_NORMAL || sf == SCALE_FACTOR_ONEPAWN)  
   {
+	 int absEG = eg >= 0 ? eg : -eg;
      if (opposite_bishops(pos)) 
 	 {
       // Endgame with opposite-colored bishops and no other pieces
@@ -718,7 +720,7 @@ INLINE int evaluate_scale_factor(const Pos *pos, EvalInfo *ei, Value eg)
     }
     // Endings where weaker side can place his king in front of the opponent's
     // pawns are drawish.
-    else if (    abs(eg) <= BishopValueEg
+    else if (    absEG <= BishopValueEg
              &&  piece_count(strongSide, PAWN) <= 2
              && !pawn_passed(pos, strongSide ^ 1, square_of(strongSide ^ 1, KING)))
       return 37 + 7 * piece_count(strongSide, PAWN);
@@ -758,7 +760,8 @@ Value evaluate(const Pos *pos)
 
   // Early exit if score is high
   v = (mg_value(score) + eg_value(score)) / 2;
-  if (abs(v) > LazyThreshold)
+  int w = v >= 0 ? v : -v;
+  if (w > LazyThreshold)
      return pos_stm() == WHITE ? v : -v;
   
   // Initialize attack and king safety bitboards.
