@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <inttypes.h>
 
+#include "tzbook.h"
 #include "evaluate.h"
 #include "misc.h"
 #include "movegen.h"
@@ -257,12 +258,61 @@ void mainthread_search(void)
            uci_value(buf, pos_checkers() ? -VALUE_MATE : VALUE_DRAW));
     fflush(stdout);
     IO_UNLOCK;
-  } else {
+  } 
+  else{
+ 	 Move bookMove = 0;
+ 	 if (!Limits.infinite && !Limits.mate)
+ 		bookMove = probe2Move(pos);
+ 	ExtMove *rm = pos->rootMoves;
+ 	int i, count=0;
+ 	ExtMove bestExtMove={-1,-1};
+ 	int iBest=0;
+ 	for (i=0; i< sizeof(rm); i++)
+ 	{
+ 	 if (rm[i].move == bookMove)
+ 	 {
+ 		if(bestExtMove.move == -1){
+ 			bestExtMove=rm[i];
+ 			iBest=i;
+ 		}
+ 		++count; /* it was found */
+ 	 }
+ 	}
+ 	
+ 	 if (bookMove && count){
+ 		ExtMove temp=rm[0];
+ 		ExtMove tmpExtMove=rm[0];
+ 		rm[0]=bestExtMove;
+ 		rm[iBest]=temp;
+ 		for (int idx = 1; idx < Threads.num_threads; idx++){
+ 			count=0;
+ 			ExtMove bestThreadExtMove={-1,-1};
+ 			int iBest=0;
+ 			for (i=0; i< sizeof(Threads.pos[idx]->moveList); i++)
+ 			{
+ 			 if (Threads.pos[idx]->moveList[i].move == bookMove)
+ 			 {
+ 				if(bestExtMove.move == -1){
+ 					bestThreadExtMove=Threads.pos[idx]->moveList[i];
+ 					iBest=i;
+ 				}
+ 				++count; /* it was found */
+ 			 }
+ 			}			
+ 			ExtMove temp=Threads.pos[idx]->moveList[0];
+ 			ExtMove tmpExtMove=Threads.pos[idx]->moveList[0];
+ 			Threads.pos[idx]->moveList[0]=bestThreadExtMove;
+ 			Threads.pos[idx]->moveList[iBest]=temp;			
+ 		}
+ 				//std::swap(Threads.pos[idx]->rm[0], *std::find(Threads.pos[idx]->rm.begin(), Threads.pos[idx]->rm.end(), bookMove));
+ 	}
+  else {
     for (int idx = 1; idx < Threads.num_threads; idx++)
       thread_start_searching(Threads.pos[idx], 0);
 
     thread_search(pos); // Let's start searching!
   }
+} 
 
   // When playing in 'nodes as time' mode, subtract the searched nodes from
   // the available ones before exiting.

@@ -107,7 +107,7 @@ Value search_NonPV(Pos *pos, Stack *ss, Value alpha, Depth depth, int cutNode)
  {
 	 // History and stats update bonus, based on depth
 	 
-   int stat_bonus(Depth depth) {
+   Value stat_bonus(Depth depth) {
 	   int d = depth / ONE_PLY ;
     return d > 17 ? 0 : d * d + 2 * d - 2;
 	
@@ -128,7 +128,7 @@ Value search_NonPV(Pos *pos, Stack *ss, Value alpha, Depth depth, int cutNode)
 	  // Penalty for a quiet ttMove that fails low
     else if (!is_capture_or_promotion(pos, ttMove))
       {
-        int penalty = -stat_bonus(depth);
+        Value penalty = -stat_bonus(depth);
         hs_update(*pos->history,pos_stm(), ttMove, penalty);
         update_cm_stats(ss, moved_piece(ttMove), to_sq(ttMove), penalty);
       }
@@ -611,7 +611,7 @@ moves_loop: // When in check search starts from here.
   // search then return a fail low score.
    
     Square prevSq = to_sq((ss-1)->currentMove);
-    int stat_bonus(Depth depth) {
+    Value stat_bonus(Depth depth) {
 	int d = depth / ONE_PLY ;
     return d > 17 ? 0 : d * d + 2 * d - 2;
 	}
