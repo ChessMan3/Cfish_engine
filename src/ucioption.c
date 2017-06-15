@@ -36,6 +36,7 @@
 #include "thread.h"
 #include "tt.h"
 #include "uci.h"
+#include "tzbook.h"
 
 // 'On change' actions, triggered by an option's value change
 static void on_clear_hash(Option *opt)
@@ -75,6 +76,16 @@ static void on_tb_path(Option *opt)
   TB_init(opt->val_string);
 }
 
+void on_brainbook_path(Option *opt) 
+{ 
+	initBook(opt->val_string); 
+}
+void on_book_move2_prob(Option *opt) 
+{ 
+	set_book_move2_probability(opt); 
+}
+
+
 static void on_largepages(Option *opt)
 {
   delayed_settings.large_pages = opt->value;
@@ -87,9 +98,16 @@ static void on_largepages(Option *opt)
 #endif
 
 static Option options_map[] = {
+  { "Tactical Mode", OPT_TYPE_CHECK, 0, 0, 0, NULL, NULL, 0, NULL },
+  { "Clean Search", OPT_TYPE_CHECK, 0, 0, 0, NULL, NULL, 0, NULL },
+  { "Razoring", OPT_TYPE_CHECK, 1, 0, 0, NULL, NULL, 0, NULL },
+  { "Futility", OPT_TYPE_CHECK, 1, 0, 0, NULL, NULL, 0, NULL },
+  { "Pruning", OPT_TYPE_CHECK, 1, 0, 0, NULL, NULL, 0, NULL },
+  { "NullMove", OPT_TYPE_CHECK, 1, 0, 0, NULL, NULL, 0, NULL },
+  { "ProbCut", OPT_TYPE_CHECK, 1, 0, 0, NULL, NULL, 0, NULL },
   { "Debug Log File", OPT_TYPE_STRING, 0, 0, 0, "<empty>", on_logger, 0, NULL },
   { "Contempt", OPT_TYPE_SPIN, 0, -100, 100, NULL, NULL, 0, NULL },
-  { "Threads", OPT_TYPE_SPIN, 1, 1, 512, NULL, on_threads, 0, NULL },
+  { "Threads", OPT_TYPE_SPIN, 1, 1, 128, NULL, on_threads, 0, NULL },
   { "Hash", OPT_TYPE_SPIN, 16, 1, MAXHASHMB, NULL, on_hash_size, 0, NULL },
   { "Clear Hash", OPT_TYPE_BUTTON, 0, 0, 0, NULL, on_clear_hash, 0, NULL },
   { "Ponder", OPT_TYPE_CHECK, 0, 0, 0, NULL, NULL, 0, NULL },
@@ -107,6 +125,8 @@ static Option options_map[] = {
   { "SyzygyProbeLimit", OPT_TYPE_SPIN, 6, 0, 6, NULL, NULL, 0, NULL },
   { "LargePages", OPT_TYPE_CHECK, 1, 0, 0, NULL, on_largepages, 0, NULL },
   { "NUMA", OPT_TYPE_STRING, 0, 0, 0, "all", on_numa, 0, NULL },
+  { "Book Move2 Probability", OPT_TYPE_SPIN, 0, 0, 100, NULL, on_book_move2_prob, 0, NULL },
+  { "BookPath", OPT_TYPE_STRING, 0, 0, 0, "<empty>", on_brainbook_path, 0, NULL },
   { NULL }
 };
 

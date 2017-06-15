@@ -103,38 +103,25 @@ Value search_NonPV(Pos *pos, Stack *ss, Value alpha, Depth depth, int cutNode)
       && tte_depth(tte) >= depth
       && ttValue != VALUE_NONE // Possible in case of TT access race.
       && (ttValue >= beta ? (tte_bound(tte) & BOUND_LOWER)
-                          : (tte_bound(tte) & BOUND_UPPER))) 
- {
-	 // History and stats update bonus, based on depth
-	 
-   int stat_bonus(Depth depth) {
-	   int d = depth / ONE_PLY ;
-    return d > 17 ? 0 : d * d + 2 * d - 2;
-	
-   }
+                          : (tte_bound(tte) & BOUND_UPPER))) {
     // If ttMove is quiet, update move sorting heuristics on TT hit
-    if (ttMove) 
-	{ 
-      if (ttValue >= beta)
-	  {
-        if (!is_capture_or_promotion(pos, ttMove))
-        update_stats(pos, ss, ttMove, NULL, 0, stat_bonus(depth));
+    if (ttValue >= beta && ttMove) {
+      int d = depth / ONE_PLY;
+
+      if (!is_capture_or_promotion(pos, ttMove)) {
+        Value bonus = d * d + 2 * d - 2;
+        update_stats(pos, ss, ttMove, NULL, 0, bonus);
+      }
 
       // Extra penalty for a quiet TT move in previous ply when it gets refuted.
-	    Square prevSq = to_sq((ss-1)->currentMove);
-      if ((ss-1)->moveCount == 1 && !captured_piece()) 
-        update_cm_stats(ss-1, piece_on(prevSq), prevSq, -stat_bonus(depth + ONE_PLY));
-      }
-	  // Penalty for a quiet ttMove that fails low
-    else if (!is_capture_or_promotion(pos, ttMove))
-      {
-        int penalty = -stat_bonus(depth);
-        hs_update(*pos->history,pos_stm(), ttMove, penalty);
-        update_cm_stats(ss, moved_piece(ttMove), to_sq(ttMove), penalty);
+      if ((ss-1)->moveCount == 1 && !captured_piece()) {
+        Value penalty = d * d + 4 * d + 1;
+        Square prevSq = to_sq((ss-1)->currentMove);
+        update_cm_stats(ss-1, piece_on(prevSq), prevSq, -penalty);
       }
     }
     return ttValue;
- }
+  }
 
   // Step 4a. Tablebase probe
   if (!rootNode && TB_Cardinality) {
@@ -191,7 +178,7 @@ Value search_NonPV(Pos *pos, Stack *ss, Value alpha, Depth depth, int cutNode)
     goto moves_loop;
 
   // Step 6. Razoring (skipped when in check)
-  if (   !PvNode
+  if ( option_value(OPT_RAZORING) &&   !PvNode
       &&  depth < 4 * ONE_PLY
       &&  eval + razor_margin[depth / ONE_PLY] <= alpha) {
 
@@ -205,7 +192,7 @@ Value search_NonPV(Pos *pos, Stack *ss, Value alpha, Depth depth, int cutNode)
   }
 
   // Step 7. Futility pruning: child node (skipped when in check)
-  if (   !rootNode
+  if ( option_value(OPT_FUTILITY) &&  !rootNode
       &&  depth < 7 * ONE_PLY
       &&  eval - futility_margin(depth) >= beta
       &&  eval < VALUE_KNOWN_WIN  // Do not return unproven wins
@@ -213,11 +200,16 @@ Value search_NonPV(Pos *pos, Stack *ss, Value alpha, Depth depth, int cutNode)
     return eval; // - futility_margin(depth); (do not do the right thing)
 
   // Step 8. Null move search with verification search (is omitted in PV nodes)
-  if (   !PvNode
+  	  ExtMove list[MAX_MOVES];
+	  ExtMove *last = generate_legal(pos, list);
+	  int size=(int)(last-list+1);
+	  if ( option_value(OPT_NULLMOVE) &&  !PvNode
       &&  eval >= beta
       && (ss->staticEval >= beta - 35 * (depth / ONE_PLY - 6) || depth >= 13 * ONE_PLY)
-      &&  pos_non_pawn_material(pos_stm())) {
-
+	  && pos->maxPly + 5 * ONE_PLY > pos->rootDepth
+	  && !(depth > 12 * ONE_PLY && size < 4)
+      &&  pos_non_pawn_material(pos_stm()) > (depth > 12 * ONE_PLY) * BishopValueMg) {
+  
     ss->currentMove = MOVE_NULL;
     ss->counterMoves = NULL;
 
@@ -256,7 +248,7 @@ Value search_NonPV(Pos *pos, Stack *ss, Value alpha, Depth depth, int cutNode)
   // Step 9. ProbCut (skipped when in check)
   // If we have a good enough capture and a reduced search returns a value
   // much above beta, we can (almost) safely prune the previous move.
-  if (   !PvNode
+  if ( option_value(OPT_PROBCUT) &&  !PvNode
       &&  depth >= 5 * ONE_PLY
       &&  abs(beta) < VALUE_MATE_IN_MAX_PLY) {
 
@@ -317,11 +309,10 @@ moves_loop: // When in check search starts from here.
                          && !excludedMove // Recursive singular search is not allowed
                          && (tte_bound(tte) & BOUND_LOWER)
                          &&  tte_depth(tte) >= depth - 3 * ONE_PLY;
-   skipQuiets = 0;			 
-
+  skipQuiets = 0;		
   // Step 11. Loop through moves
   // Loop through all pseudo-legal moves until no moves remain or a beta cutoff occurs
-   while ((move = next_move(pos, skipQuiets))) {
+  while ((move = next_move(pos, skipQuiets))) {
     assert(move_is_ok(move));
 
     if (move == excludedMove)
@@ -394,18 +385,17 @@ moves_loop: // When in check search starts from here.
       ss->stage++;
       ss->countermove = cm; // pedantic
     }
+     else if (    givesCheck
+        && !moveCountPruning
+        &&  see_test(pos, move, 0))
+      extension = ONE_PLY;
 
-	else if (    givesCheck
-             && !moveCountPruning
-             &&  see_test(pos, move, 0))
-       extension = ONE_PLY;
- 
     // Update the current move (this must be done after singular extension search)
     newDepth = depth - ONE_PLY + extension;
 
     // Step 13. Pruning at shallow depth
-    if (   !rootNode
-        &&  pos_non_pawn_material(pos_stm())
+    if ( option_value(OPT_PRUNING) &&  !rootNode
+	    &&  pos_non_pawn_material(pos_stm())
         &&  bestValue > VALUE_MATED_IN_MAX_PLY)
     {
       if (   !captureOrPromotion
@@ -413,8 +403,7 @@ moves_loop: // When in check search starts from here.
           && (!advanced_pawn_push(pos, move) || pos_non_pawn_material(WHITE) + pos_non_pawn_material(BLACK) >= (Value)5000))
       {
         // Move count based pruning
-        if (moveCountPruning) 
-        {
+        if (moveCountPruning) {
 			skipQuiets = 1;
           continue;
 		}
@@ -491,7 +480,7 @@ moves_loop: // When in check search starts from here.
                      + (fmh  ? (*fmh )[moved_piece][to_sq(move)] : 0)
                      + (fmh2 ? (*fmh2)[moved_piece][to_sq(move)] : 0)
                      + hs_get(*pos->history, pos_stm() ^ 1, move)
-                     - 4000; // Correction factor.
+                     - 8000; // Correction factor.
 
         // Decrease/increase reduction by comparing with opponent's stat score.
         if (ss->history > 0 && (ss-1)->history < 0)
@@ -503,6 +492,11 @@ moves_loop: // When in check search starts from here.
         // Decrease/increase reduction for moves with a good/bad history.
         r = max(DEPTH_ZERO, (r / ONE_PLY - ss->history / 20000) * ONE_PLY);
       }
+	  // The "Tactcal Mode" option looks Engine to look at more positions per search depth, but Engine will play
+	  // weaker overall.  It also sets the "MultiPV" option to 256 to allow Engine to look at more nodes per
+	  // depth and may help in analysis.
+	  if ( ( ss->ply < depth / 2 - ONE_PLY) && option_value(OPT_TACTICALMODE) )
+		r = DEPTH_ZERO;
 
       Depth d = max(newDepth - r, ONE_PLY);
 
@@ -609,35 +603,37 @@ moves_loop: // When in check search starts from here.
   // All legal moves have been searched and if there are no legal moves,
   // it must be a mate or a stalemate. If we are in a singular extension
   // search then return a fail low score.
-   
-    Square prevSq = to_sq((ss-1)->currentMove);
-    int stat_bonus(Depth depth) {
-	int d = depth / ONE_PLY ;
-    return d > 17 ? 0 : d * d + 2 * d - 2;
-	}
-   
   if (!moveCount)
     bestValue = excludedMove ? alpha
                :     inCheck ? mated_in(ss->ply) : DrawValue[pos_stm()];
-  else if (bestMove) 
-  {
+  else if (bestMove) {
+    int d = depth / ONE_PLY;
 
     // Quiet best move: update move sorting heuristics
-    if (!is_capture_or_promotion(pos, bestMove)) 
-     update_stats(pos, ss, bestMove, quietsSearched, quietCount, stat_bonus(depth));
+    if (!is_capture_or_promotion(pos, bestMove)) {
+      Value bonus = d * d + 2 * d - 2;
+      update_stats(pos, ss, bestMove, quietsSearched, quietCount, bonus);
+    }
 
     // Extra penalty for a quiet TT move in previous ply when it gets refuted.
-    if ((ss-1)->moveCount == 1 && !captured_piece())		
-      update_cm_stats(ss-1, piece_on(prevSq), prevSq, -stat_bonus(depth + ONE_PLY));
-	  
+    if ((ss-1)->moveCount == 1 && !captured_piece()) {
+      Value penalty = d * d + 4 * d + 1;
+      Square prevSq = to_sq((ss-1)->currentMove);
+      update_cm_stats(ss-1, piece_on(prevSq), prevSq, -penalty);
+    }
   }
   // Bonus for prior countermove that caused the fail low.
   else if (    depth >= 3 * ONE_PLY
            && !captured_piece()
            && move_is_ok((ss-1)->currentMove))
-            update_cm_stats(ss-1, piece_on(prevSq), prevSq, stat_bonus(depth));   
-  
- if (!excludedMove)
+  {
+    int d = depth / ONE_PLY;
+    Value bonus = d * d + 2 * d - 2;
+    Square prevSq = to_sq((ss-1)->currentMove);
+    update_cm_stats(ss-1, piece_on(prevSq), prevSq, bonus);
+  }
+
+  if(!excludedMove)
   tte_save(tte, posKey, value_to_tt(bestValue, ss->ply),
            bestValue >= beta ? BOUND_LOWER :
            PvNode && bestMove ? BOUND_EXACT : BOUND_UPPER,
