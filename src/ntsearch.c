@@ -216,6 +216,7 @@ Value search_NonPV(Pos *pos, Stack *ss, Value alpha, Depth depth, int cutNode)
   if (   !PvNode
       &&  eval >= beta
       && (ss->staticEval >= beta - 35 * (depth / ONE_PLY - 6) || depth >= 13 * ONE_PLY)
+      &&  pos->maxPly + 3 * ONE_PLY > pos->rootDepth
       &&  pos_non_pawn_material(pos_stm())) {
 
     ss->currentMove = MOVE_NULL;
@@ -400,7 +401,11 @@ moves_loop: // When in check search starts from here.
              &&  see_test(pos, move, 0))
        extension = ONE_PLY;
  
-    // Update the current move (this must be done after singular extension search)
+    else if (   far_advanced_pawn_push(pos, move)
+			 && pos_non_pawn_material(pos_stm()) <=  RookValueMg)
+	   extension = ONE_PLY;
+ 
+    // Calculate new depth for this move
     newDepth = depth - ONE_PLY + extension;
 
     // Step 13. Pruning at shallow depth
@@ -459,6 +464,7 @@ moves_loop: // When in check search starts from here.
       continue;
     }
 
+    // Update the current move (this must be done after singular extension search)
     ss->currentMove = move;
     ss->counterMoves = &(*pos->counterMoveHistory)[moved_piece][to_sq(move)];
 
