@@ -567,7 +567,7 @@ INLINE Score evaluate_passer_pawns(const Pos *pos, EvalInfo *ei, const int Us)
 
     assert(!(pieces_cp(Them, PAWN) & forward_bb(Us, s + pawn_push(Us))));
 
-    bb = forward_bb(Us, s) & (ei->attackedBy[Them][0] | pieces_c(Them));
+    bb = forward_bb(Us, s) & (ei->attackedBy[Them][0] | (pieces_c(Them) ^ pieces_cp(Them, PAWN)));
     score -= HinderPassedPawn * popcount(bb);
 
     int r = relative_rank_s(Us, s) - RANK_2;
