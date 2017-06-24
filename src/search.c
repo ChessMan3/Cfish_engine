@@ -150,10 +150,13 @@ static TimePoint lastInfoTime;
 
 void search_init(void)
 {
+  double threadcount;
+  threadcount = option_value(OPT_THREADS);
+	
   for (int imp = 0; imp <= 1; imp++)
     for (int d = 1; d < 64; ++d)
       for (int mc = 1; mc < 64; ++mc) {
-        double r = log(d) * log(mc) / 1.95;
+      double r = log(d) * log(mc) * log(1.65 + threadcount/50);
 
         Reductions[NonPV][imp][d][mc] = ((int)lround(r));
         Reductions[PV][imp][d][mc] = max(Reductions[NonPV][imp][d][mc] - 1, 0);
