@@ -52,6 +52,11 @@ static const int QuadraticTheirs[][8] = {
 static const int PawnSet[] = {
     24, -32, 107, -51, 117, -9, -126, -21, 31
 };
+ 
+// Queen vs. minors 
+static const int QueenMinorsImblance[6] = {    
+    31, -8, -15, -25, -5, 0  
+};
 
 // Helper used to detect a given material distribution.
 static int is_KXK(const Pos *pos, int us)
@@ -82,6 +87,10 @@ int imbalance(int us, int pieceCount[][8])
   int *pc_us = pieceCount[us];
   int *pc_them = pieceCount[us ^ 1];
   int bonus = PawnSet[pieceCount[us][PAWN]];
+    
+  if (pc_us[QUEEN] == 1 && pc_them[QUEEN] == 0)
+
+  bonus += QueenMinorsImblance[pc_them[KNIGHT] + pc_them[BISHOP]];
 
   // Second-degree polynomial material imbalance by Tord Romstad
   for (int pt1 = 0; pt1 <= QUEEN; pt1++) {
