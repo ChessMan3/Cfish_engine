@@ -57,6 +57,10 @@ typedef void (*OnChange)(Option *);
 #define OPT_SYZ_PROBE_LIMIT 17
 #define OPT_LARGE_PAGES     18
 #define OPT_NUMA            19
+#define OPT_PV4             20
+#define OPT_PV16            21
+#define OPT_PV256           22
+#define OPT_TACTICALMODE    23
 
 struct Option {
   char *name;

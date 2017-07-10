@@ -519,6 +519,11 @@ moves_loop: // When in check search starts from here.
         r = max(DEPTH_ZERO, (r / ONE_PLY - ss->history / 20000) * ONE_PLY);
       }
 
+      // The "Tactical Mode" option looks Engine to look at more positions per search depth, but Engine will play
+      // weaker overall.
+      if ( ( ss->ply < depth / 2 - ONE_PLY) && option_value(OPT_TACTICALMODE) )
+          r = DEPTH_ZERO;
+
       Depth d = max(newDepth - r, ONE_PLY);
 
       value = -search_NonPV(pos, ss+1, -(alpha+1), d, 1);
