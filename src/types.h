@@ -155,7 +155,7 @@ INLINE int make_castling_right(int c, int s)
 }
 
 #define PHASE_ENDGAME 0
-#define PHASE_MIDGAME 128
+#define PHASE_MIDGAME 256
 #define MG 0
 #define EG 1
 
