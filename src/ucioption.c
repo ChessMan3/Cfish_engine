@@ -87,6 +87,13 @@ static void on_largepages(Option *opt)
 #endif
 
 static Option options_map[] = {
+  { "Tactical Mode", OPT_TYPE_CHECK, 0, 0, 0, NULL, NULL, 0, NULL },
+  { "Clean Search", OPT_TYPE_CHECK, 0, 0, 0, NULL, NULL, 0, NULL },
+  { "Razoring", OPT_TYPE_CHECK, 1, 0, 0, NULL, NULL, 0, NULL },
+  { "Futility", OPT_TYPE_CHECK, 1, 0, 0, NULL, NULL, 0, NULL },
+  { "Pruning", OPT_TYPE_CHECK, 1, 0, 0, NULL, NULL, 0, NULL },
+  { "NullMove", OPT_TYPE_CHECK, 1, 0, 0, NULL, NULL, 0, NULL },
+  { "ProbCut", OPT_TYPE_CHECK, 1, 0, 0, NULL, NULL, 0, NULL },
   { "Debug Log File", OPT_TYPE_STRING, 0, 0, 0, "<empty>", on_logger, 0, NULL },
   { "Contempt", OPT_TYPE_SPIN, 0, -100, 100, NULL, NULL, 0, NULL },
   { "Threads", OPT_TYPE_SPIN, 1, 1, 512, NULL, on_threads, 0, NULL },
@@ -106,6 +113,9 @@ static Option options_map[] = {
   { "Syzygy50MoveRule", OPT_TYPE_CHECK, 1, 0, 0, NULL, NULL, 0, NULL },
   { "SyzygyProbeLimit", OPT_TYPE_SPIN, 6, 0, 6, NULL, NULL, 0, NULL },
   { "LargePages", OPT_TYPE_CHECK, 1, 0, 0, NULL, on_largepages, 0, NULL },
+  { "PV4", OPT_TYPE_CHECK, 0, 0, 0, NULL, NULL, 0, NULL },
+  { "PV16", OPT_TYPE_CHECK, 0, 0, 0, NULL, NULL, 0, NULL },
+  { "PV256", OPT_TYPE_CHECK, 0, 0, 0, NULL, NULL, 0, NULL },
   { "NUMA", OPT_TYPE_STRING, 0, 0, 0, "all", on_numa, 0, NULL },
   { NULL }
 };
@@ -118,8 +128,8 @@ void options_init()
 {
 #ifdef NUMA
   // On a non-NUMA machine, disable the NUMA option to diminish confusion.
-  if (!numa_avail)
-    options_map[OPT_NUMA].type = OPT_TYPE_DISABLED;
+  if (numa_avail)
+    options_map[OPT_NUMA].type = OPT_TYPE_ENABLED;
 #else
   options_map[OPT_NUMA].type = OPT_TYPE_DISABLED;
 #endif
