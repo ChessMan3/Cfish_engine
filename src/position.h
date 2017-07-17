@@ -200,7 +200,6 @@ PURE Value see_sign(const Pos *pos, Move m);
 PURE Value see_test(const Pos *pos, Move m, int value);
 
 PURE Key key_after(const Pos *pos, Move m);
-PURE int game_phase(const Pos *pos);
 PURE int is_draw(const Pos *pos);
 
 // Position representation
