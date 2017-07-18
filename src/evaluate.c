@@ -254,7 +254,7 @@ INLINE Score evaluate_piece(const Pos *pos, EvalInfo *ei, Score *mobility,
 
 	// Bonus for this piece as a king protector
     score += KingProtector[Pt-2] * distance(s, square_of(Us, KING));
-	
+
     if (Pt == BISHOP || Pt == KNIGHT) {
       // Bonus for outpost squares
       bb = OutpostRanks & ~ei->pe->pawnAttacksSpan[Them];
