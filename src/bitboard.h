@@ -179,6 +179,14 @@ INLINE Bitboard in_front_bb(unsigned c, unsigned r)
   return InFrontBB[c][r];
 }
 
+// forward_ranks_bb() returns a bitboard representing all the squares on all the ranks
+// in front of the given one, from the point of view of the given color. For
+// instance, forward_ranks_bb(BLACK, SQ_D3) will return the 16 squares on ranks 1 and 2.
+
+INLINE Bitboard forward_ranks_bb(unsigned c, Square s) {
+  return InFrontBB[c][rank_of(s)];
+}
+
 
 // forward_bb() returns a bitboard representing all the squares along the
 // line in front of the given one, from the point of view of the given
