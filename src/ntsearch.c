@@ -108,7 +108,7 @@ Value search_NonPV(Pos *pos, Stack *ss, Value alpha, Depth depth, int cutNode)
 	 // History and stats update bonus, based on depth
 	 
    int stat_bonus(Depth depth) {
-	   int d = depth / ONE_PLY ;
+	   int d = depth / ONE_PLY;
     return d > 17 ? 0 : d * d + 2 * d - 2;
 	
    }
@@ -631,7 +631,7 @@ moves_loop: // When in check search starts from here.
    
     Square prevSq = to_sq((ss-1)->currentMove);
     int stat_bonus(Depth depth) {
-	int d = depth / ONE_PLY ;
+	int d = depth / ONE_PLY;
     return d > 17 ? 0 : d * d + 2 * d - 2;
 	}
    
