@@ -473,8 +473,8 @@ INLINE Score evaluate_king(const Pos *pos, EvalInfo *ei, int Us)
 
 INLINE Score evaluate_threats(const Pos *pos, EvalInfo *ei, const int Us)
 {
-  const int Them  = (Us == WHITE ? BLACK    : WHITE);
-  const int Up    = (Us == WHITE ? DELTA_N  : DELTA_S);
+  const int Them  = (Us == WHITE ? BLACK : WHITE);
+  const int Up    = (Us == WHITE ? DELTA_N : DELTA_S);
   const int Left  = (Us == WHITE ? DELTA_NW : DELTA_SE);
   const int Right = (Us == WHITE ? DELTA_NE : DELTA_SW);
   const Bitboard TRank3BB = (Us == WHITE ? Rank3BB : Rank6BB);

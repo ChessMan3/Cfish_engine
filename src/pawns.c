@@ -29,16 +29,13 @@
 #define S(mg, eg) make_score(mg, eg)
 
 // Isolated pawn penalty by opposed flag
-static const Score Isolated[] = { S(45, 40), S(30, 27) };
+static const Score Isolated[] = { S(44-17, 38-8), S(30-17, 26-8) };
 
 // Backward pawn penalty by opposed flag
-static const Score Backward[] = { S(56, 33), S(41, 19) };
+static const Score Backward[] = { S(57-17, 34-8), S(41-17, 20-8) };
 
-// Unsupported pawn penalty for pawns which are neither isolated nor backward.
-static const Score Unsupported = S(17, 8);
-
-// Connected pawn bonus by opposed, phalanx, twice supported and rank
-static Score Connected[2][2][2][8];
+// Connected pawn bonus by opposed, phalanx, #support and rank
+static Score Connected[2][2][3][8];
 
 // Doubled pawn penalty
 static const Score Doubled = S(18, 38);
@@ -95,7 +92,7 @@ INLINE Score pawn_evaluate(const Pos *pos, PawnEntry *e, const int Us)
   const int Left  = (Us == WHITE ? DELTA_NW : DELTA_SE);
 
   Bitboard b, neighbours, stoppers, doubled, supported, phalanx;
-  Bitboard lever, leverPush, connected;
+  Bitboard lever, leverPush;
   Square s;
   int opposed, backward;
   Score score = SCORE_ZERO;
@@ -128,7 +125,6 @@ INLINE Score pawn_evaluate(const Pos *pos, PawnEntry *e, const int Us)
     neighbours = ourPawns   & adjacent_files_bb(f);
     phalanx    = neighbours & rank_bb_s(s);
     supported  = neighbours & rank_bb_s(s - Up);
-    connected  = supported | phalanx;
 
     // A pawn is backward when it is behind all pawns of the same color on the
     // adjacent files and cannot be safely advanced.
@@ -143,7 +139,7 @@ INLINE Score pawn_evaluate(const Pos *pos, PawnEntry *e, const int Us)
       // stopper on adjacent file which controls the way to that rank.
       backward = !!((b | shift_bb(Up, b & adjacent_files_bb(f))) & stoppers);
 
-      assert(!backward || !(pawn_attack_span(Us ^ 1, s + Up) & neighbours));
+      assert(!(backward && (forward_ranks_bb(Us ^ 1, s + Up) & neighbours)));
     }
 
     // Passed pawns will be properly scored in evaluation because we need
@@ -166,17 +162,12 @@ INLINE Score pawn_evaluate(const Pos *pos, PawnEntry *e, const int Us)
       }			
 				 
     // Score this pawn
-    if (!neighbours)
+    if (supported | phalanx)
+      score += Connected[opposed][!!phalanx][popcount(supported)][relative_rank_s(Us, s)];
+    else if (!neighbours)
       score -= Isolated[opposed];
-
     else if (backward)
       score -= Backward[opposed];
-
-    else if (!supported)
-      score -= Unsupported;
-
-    if (connected)
-      score += Connected[opposed][!!phalanx][!!more_than_one(supported)][relative_rank_s(Us, s)];
 
     if (doubled && !supported)
       score -= Doubled;
@@ -197,11 +188,11 @@ void pawn_init(void)
 
   for (int opposed = 0; opposed < 2; opposed++)
     for (int phalanx = 0; phalanx < 2; phalanx++)
-      for (int apex = 0; apex < 2; apex++)
+      for (int support = 0; support < 3; support++)
         for (int r = RANK_2; r < RANK_8; ++r) {
           int v = (Seed[r] + (phalanx ? (Seed[r + 1] - Seed[r]) / 2 : 0)) >> opposed;
-          v += (apex ? v / 2 : 0);
-          Connected[opposed][phalanx][apex][r] = make_score(v, v * (r-2) / 4);
+          v += 17 * support;
+          Connected[opposed][phalanx][support][r] = make_score(v, v * (r - 2) / 4);
       }
 }
 
