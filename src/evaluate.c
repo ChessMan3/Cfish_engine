@@ -364,7 +364,7 @@ INLINE Score evaluate_king(const Pos *pos, EvalInfo *ei, int Us)
   const int Them = (Us == WHITE ? BLACK   : WHITE);
   const int Up = (Us == WHITE ? DELTA_N : DELTA_S);
 
-  Bitboard undefended, b, b1, b2, safe, other;
+  Bitboard kingOnlyDefended, b, b1, b2, safe, other;
   int kingDanger;
   const Square ksq = square_of(Us, KING);
 
@@ -375,9 +375,9 @@ INLINE Score evaluate_king(const Pos *pos, EvalInfo *ei, int Us)
   // Main king safety evaluation
   if (ei->kingAttackersCount[Them] > (1 - piece_count(Them, QUEEN))) {
     // Find the attacked squares which are defended only by our king...
-    undefended =   ei->attackedBy[Them][0]
-                &  ei->attackedBy[Us][KING]
-                & ~ei->attackedBy2[Us];
+    kingOnlyDefended =   ei->attackedBy[Them][0]
+                      &  ei->attackedBy[Us][KING]
+                      & ~ei->attackedBy2[Us];
 
     // ... and those which are not defended at all in the larger king ring
     b =  ei->attackedBy[Them][0] & ~ei->attackedBy[Us][0]
@@ -386,11 +386,11 @@ INLINE Score evaluate_king(const Pos *pos, EvalInfo *ei, int Us)
     // Initialize the 'kingDanger' variable, which will be transformed
     // later into a king danger score. The initial value is based on the
     // number and types of the enemy's attacking pieces, the number of
-    // attacked and undefended squares around our king and the quality of
-    // the pawn shelter (current 'score' value).
+    // attacked and weak squares around our king, the absence of queen and
+    // the quality of the pawn shelter (current 'score' value).
     kingDanger =        ei->kingAttackersCount[Them] * ei->kingAttackersWeight[Them]
                 + 102 * ei->kingAdjacentZoneAttacksCount[Them]
-                + 201 * popcount(undefended)
+                + 201 * popcount(kingOnlyDefended)
                 + 143 * (popcount(b) + !!pinned_pieces(pos, Us))
                 - 848 * !pieces_cp(Them, QUEEN)
                 -   9 * mg_value(score) / 8
@@ -398,7 +398,7 @@ INLINE Score evaluate_king(const Pos *pos, EvalInfo *ei, int Us)
 
     // Analyse the safe enemy's checks which are possible on next move...
     safe  = ~pieces_c(Them);
-    safe &= ~ei->attackedBy[Us][0] | (undefended & ei->attackedBy2[Them]);
+    safe &= ~ei->attackedBy[Us][0] | (kingOnlyDefended & ei->attackedBy2[Them]);
 
     b1 = attacks_from_rook(ksq);
     b2 = attacks_from_bishop(ksq);
@@ -477,8 +477,7 @@ INLINE Score evaluate_threats(const Pos *pos, EvalInfo *ei, const int Us)
   const int Up    = (Us == WHITE ? DELTA_N  : DELTA_S);
   const int Left  = (Us == WHITE ? DELTA_NW : DELTA_SE);
   const int Right = (Us == WHITE ? DELTA_NE : DELTA_SW);
-  const Bitboard TRank2BB = (Us == WHITE ? Rank2BB  : Rank7BB);
-  const Bitboard TRank7BB = (Us == WHITE ? Rank7BB  : Rank2BB);
+  const Bitboard TRank3BB = (Us == WHITE ? Rank3BB : Rank6BB);
 
   enum { Minor, Rook };
 
@@ -540,14 +539,15 @@ INLINE Score evaluate_threats(const Pos *pos, EvalInfo *ei, const int Us)
       score += ThreatByKing[!!more_than_one(b)];
   }
 
-  // Bonus if some pawns can safely push and attack an enemy piece
-  b = pieces_cp(Us, PAWN) & ~TRank7BB;
-  b = shift_bb(Up, b | (shift_bb(Up, b & TRank2BB) & ~pieces()));
+  // Find squares where our pawns can push on the next move
+  b = shift_bb(Up, pieces_cp(Us, PAWN)) & ~pieces();
+  b |= shift_bb(Up, b & TRank3BB) & ~pieces();
 
-  b &=  ~pieces()
-      & ~ei->attackedBy[Them][PAWN]
+  // Keep only the squares which are not completely unsafe
+  b &= ~ei->attackedBy[Them][PAWN]
       & (ei->attackedBy[Us][0] | ~ei->attackedBy[Them][0]);
 
+  // Add a bonus for each new pawn threats from those squares
   b =  (shift_bb(Left, b) | shift_bb(Right, b))
      &  pieces_c(Them)
      & ~ei->attackedBy[Us][PAWN];
@@ -558,12 +558,13 @@ INLINE Score evaluate_threats(const Pos *pos, EvalInfo *ei, const int Us)
 }
 
 
-// evaluate_passer_pawns() evaluates the passed pawns and candidate passed
+// evaluate_passed_pawns() evaluates the passed pawns and candidate passed
 // pawns of the given color.
 
-INLINE Score evaluate_passer_pawns(const Pos *pos, EvalInfo *ei, const int Us)
+INLINE Score evaluate_passed_pawns(const Pos *pos, EvalInfo *ei, const int Us)
 {
   const int Them = (Us == WHITE ? BLACK : WHITE);
+  const int Up   = (Us == WHITE ? DELTA_N  : DELTA_S);
 
   Bitboard b, bb, squaresToQueen, defendedSquares, unsafeSquares;
   Score score = SCORE_ZERO;
@@ -573,9 +574,9 @@ INLINE Score evaluate_passer_pawns(const Pos *pos, EvalInfo *ei, const int Us)
   while (b) {
     Square s = pop_lsb(&b);
 
-    assert(!(pieces_cp(Them, PAWN) & forward_bb(Us, s + pawn_push(Us))));
+    assert(!(pieces_cp(Them, PAWN) & forward_file_bb(Us, s + Up)));
 
-    bb = forward_bb(Us, s) & (ei->attackedBy[Them][0] | pieces_c(Them));
+    bb = forward_file_bb(Us, s) & (ei->attackedBy[Them][0] | pieces_c(Them));
     score -= HinderPassedPawn * popcount(bb);
 
     int r = relative_rank_s(Us, s) - RANK_2;
@@ -584,7 +585,7 @@ INLINE Score evaluate_passer_pawns(const Pos *pos, EvalInfo *ei, const int Us)
     Value mbonus = Passed[MG][r], ebonus = Passed[EG][r];
 
     if (rr) {
-      Square blockSq = s + pawn_push(Us);
+      Square blockSq = s + Up;
 
       // Adjust bonus based on the king's proximity
       ebonus +=  distance(square_of(Them, KING), blockSq) * 5 * rr
@@ -592,16 +593,16 @@ INLINE Score evaluate_passer_pawns(const Pos *pos, EvalInfo *ei, const int Us)
 
       // If blockSq is not the queening square then consider also a second push
       if (relative_rank_s(Us, blockSq) != RANK_8)
-        ebonus -= distance(square_of(Us, KING), blockSq + pawn_push(Us)) * rr;
+        ebonus -= distance(square_of(Us, KING), blockSq + Up) * rr;
 
       // If the pawn is free to advance, then increase the bonus
       if (is_empty(blockSq)) {
         // If there is a rook or queen attacking/defending the pawn from behind,
         // consider all the squaresToQueen. Otherwise consider only the squares
         // in the pawn's path attacked or occupied by the enemy.
-        defendedSquares = unsafeSquares = squaresToQueen = forward_bb(Us, s);
+        defendedSquares = unsafeSquares = squaresToQueen = forward_file_bb(Us, s);
 
-        bb = forward_bb(Them, s) & pieces_pp(ROOK, QUEEN) & attacks_from_rook(s);
+        bb = forward_file_bb(Them, s) & pieces_pp(ROOK, QUEEN) & attacks_from_rook(s);
 
         if (!(pieces_c(Us) & bb))
           defendedSquares &= ei->attackedBy[Us][0];
@@ -629,7 +630,7 @@ INLINE Score evaluate_passer_pawns(const Pos *pos, EvalInfo *ei, const int Us)
 
     // Scale down bonus for candidate passers which need more than one
     // pawn push to become passed.
-     if (!pawn_passed(pos, Us, s + pawn_push(Us)) || (pieces_p(PAWN) & forward_bb(Us, s)))
+     if (!pawn_passed(pos, Us, s + Up) || (pieces_p(PAWN) & forward_file_bb(Us, s)))
         mbonus /= 2, ebonus /= 2;
     
     score += make_score(mbonus, ebonus) + PassedFile[file_of(s)];
@@ -787,8 +788,8 @@ Value evaluate(const Pos *pos)
           - evaluate_threats(pos, &ei, BLACK);
 
   // Evaluate passed pawns, we need full attack information including king
-  score +=  evaluate_passer_pawns(pos, &ei, WHITE)
-          - evaluate_passer_pawns(pos, &ei, BLACK);
+  score +=  evaluate_passed_pawns(pos, &ei, WHITE)
+          - evaluate_passed_pawns(pos, &ei, BLACK);
 
   // Evaluate space for both sides, only during opening
   if (pos_non_pawn_material(WHITE) + pos_non_pawn_material(BLACK) >= 12222)
