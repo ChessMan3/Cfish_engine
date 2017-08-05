@@ -153,8 +153,6 @@ static const Score ThreatByRank        = S( 16,  3);
 static const Score Hanging             = S( 48, 27);
 static const Score ThreatByPawnPush    = S( 38, 22);
 static const Score HinderPassedPawn    = S(  7,  0);
-static const Score Coordination        = S(  2,  2);
-static const Score Correction          = S(  8,  8);
 
 // Penalty for a bishop on a1/h1 (a8/h8 for black) which is trapped by
 // a friendly pawn on b2/g2 (b7/g7 for black). This can obviously only
@@ -292,11 +290,6 @@ INLINE Score evaluate_piece(const Pos *pos, EvalInfo *ei, Score *mobility,
     }
 
     if (Pt == ROOK) {
-	    if (pieces_cp(Us, QUEEN) > 0)
-            score -= Coordination * distance(square_of(Us, ROOK), square_of(Us, QUEEN));
-
-        if (pieces_cp(Us, QUEEN) > 0)
-            score += Correction;
   
       // Bonus for aligning with enemy pawns on the same rank/file
       if (relative_rank_s(Us, s) >= RANK_5)
