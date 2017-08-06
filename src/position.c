@@ -1063,7 +1063,7 @@ void do_move(Pos *pos, Move m, int givesCheck)
 
     // Update pawn hash key and prefetch access to pawnsTable
     st->pawnKey ^= zob.psq[piece][from] ^ zob.psq[piece][to];
-    prefetch(&pos->pawnTable[st->pawnKey & (PAWN_ENTRIES -1)]);
+    prefetch2(&pos->pawnTable[st->pawnKey & (PAWN_ENTRIES -1)]);
 
     // Reset ply counters.
     st->plyCounters = 0;
@@ -1493,7 +1493,6 @@ static int pos_is_ok(Pos *pos, int *failedStep)
     }
 
     if (step == Lists)
-	{
       for (int c = 0; c < 2; c++)
         for (int pt = PAWN; pt <= KING; pt++) {
           if (piece_count(c, pt) != popcount(pieces_cp(c, pt)))
@@ -1504,9 +1503,6 @@ static int pos_is_ok(Pos *pos, int *failedStep)
                 || pos->index[piece_list(c, pt)[i]] != i)
               return 0;
         }
-		if (piece_count[PAWN] > 8)
-            return false;
-	}
 
     if (step == Castling)
       for (int c = 0; c < 2; c++)

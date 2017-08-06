@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2017 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -51,9 +51,10 @@ Depth TB_ProbeDepth;
 #define NonPV 0
 #define PV    1
 
-// Sizes and phases of the skip-blocks, used for distributing search depths across the threads.
-const int skipSize[]  = { 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4 };
-const int skipPhase[] = { 0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 6, 7 };
+// Sizes and phases of the skip blocks, used for distributing search depths
+// across the threads
+static int skipSize[20]  = {1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4};
+static int skipPhase[20] = {0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 6, 7};
 
 // Razoring and futility margin based on depth
 static const int razor_margin[4] = { 483, 570, 603, 554 };
@@ -67,6 +68,13 @@ static int Reductions[2][2][64][64];  // [pv][improving][depth][moveNumber]
 INLINE Depth reduction(int i, Depth d, int mn, const int NT)
 {
   return Reductions[NT][i][min(d / ONE_PLY, 63)][min(mn, 63)] * ONE_PLY;
+}
+
+// History and stats update bonus, based on depth
+Value stat_bonus(Depth depth)
+{
+  int d = depth / ONE_PLY;
+  return d > 17 ? VALUE_ZERO : (Value)(d * d + 2 * d - 2);
 }
 
 // Skill structure is used to implement strength limit
@@ -84,8 +92,8 @@ struct Skill {
 //  Move best = 0;
 };
 
-// EasyMoveManager structure is used to detect an 'easy move'. When the PV is stable
-// across multiple search iterations, we can quickly return the best move.
+// Easy move code for detecting an 'easy move'. If the PV is stable across
+// multiple search iterations, we can quickly return the best move.
 
 struct {
   int stableCnt;
@@ -183,8 +191,8 @@ void search_clear()
 
   for (int idx = 0; idx < Threads.num_threads; idx++) {
     Pos *pos = Threads.pos[idx];
-    stats_clear(pos->history);
     stats_clear(pos->counterMoves);
+    stats_clear(pos->history);
   }
 
   mainThread.previousScore = VALUE_INFINITE;
@@ -325,10 +333,10 @@ void mainthread_search(void)
 }
 
 
-/// thread_search() is the main iterative deepening loop. It calls search()
-/// repeatedly with increasing depth until the allocated thinking time has
-/// been consumed, the user stops the search, or the maximum search depth is
-/// reached.
+// thread_search() is the main iterative deepening loop. It calls search()
+// repeatedly with increasing depth until the allocated thinking time has
+// been consumed, the user stops the search, or the maximum search depth is
+// reached.
 
 void thread_search(Pos *pos)
 {
@@ -339,6 +347,9 @@ void thread_search(Pos *pos)
   for (int i = -5; i < 3; i++)
     memset(SStackBegin(ss[i]), 0, SStackSize);
   (ss-1)->endMoves = pos->moveList;
+
+  for (int i = -4; i < 0; i++)
+    ss[i].counterMoves = &(*pos->counterMoveHistory)[0][0]; // Use as sentinel
 
   for (int i = 0; i < MAX_PLY; i++) {
     ss[i].ply = i + 1;
@@ -370,20 +381,21 @@ void thread_search(Pos *pos)
   RootMoves *rm = pos->rootMoves;
   multiPV = min(multiPV, rm->size);
 
-  // Iterative deepening loop until requested to stop or the target depth is reached.
+  int hIdx = (pos->thread_idx - 1) % 20;
+
+  // Iterative deepening loop until requested to stop or the target depth
+  // is reached.
   while (   (pos->rootDepth += ONE_PLY) < DEPTH_MAX
          && !Signals.stop
          && (!Limits.depth || threads_main()->rootDepth <= Limits.depth))
   {
- 
     // Distribute search depths across the threads
-     if (pos->thread_idx)
-     {
-         int i = (pos->thread_idx - 1) % 20;
-         if (((pos->rootDepth / ONE_PLY + pos_game_ply() + skipPhase[i]) / skipSize[i]) % 2)
-             continue;
-     }
-	 
+    if (pos->thread_idx) {
+      int i = (pos->thread_idx - 1) % 20;
+      if (((pos->rootDepth / ONE_PLY + pos_game_ply() + skipPhase[i]) / skipSize[hIdx]) % 2)
+        continue;
+    }
+
     // Age out PV variability metric
     if (pos->thread_idx == 0) {
       mainThread.bestMoveChanges *= 0.505;
@@ -643,21 +655,18 @@ static void update_pv(Move *pv, Move move, Move *childPv)
 
 static void update_cm_stats(Stack *ss, Piece pc, Square s, Value bonus)
 {
-  CounterMoveStats *cmh  = (ss-1)->counterMoves;
-  CounterMoveStats *fmh1 = (ss-2)->counterMoves;
-  CounterMoveStats *fmh2 = (ss-4)->counterMoves;
+  if (move_is_ok((ss-1)->currentMove))
+    cms_update(*(ss-1)->counterMoves, pc, s, bonus);
 
-  if (cmh)
-    cms_update(*cmh, pc, s, bonus);
+  if (move_is_ok((ss-2)->currentMove))
+    cms_update(*(ss-2)->counterMoves, pc, s, bonus);
 
-  if (fmh1)
-    cms_update(*fmh1, pc, s, bonus);
-
-  if (fmh2)
-    cms_update(*fmh2, pc, s, bonus);
+  if (move_is_ok((ss-4)->currentMove))
+    cms_update(*(ss-4)->counterMoves, pc, s, bonus);
 }
 
-// update_stats() updates move sorting heuristics when a new quiet best move is found
+// update_stats() updates killers, history, countermove and countermove
+// plus follow-up move history when a new quiet best move is found.
 
 void update_stats(const Pos *pos, Stack *ss, Move move, Move *quiets,
                   int quietsCnt, Value bonus)
@@ -668,17 +677,17 @@ void update_stats(const Pos *pos, Stack *ss, Move move, Move *quiets,
   }
 
   int c = pos_stm();
-  hs_update(*pos->history, c, move, bonus);
+  history_update(*pos->history, c, move, bonus);
   update_cm_stats(ss, moved_piece(move), to_sq(move), bonus);
 
-  if ((ss-1)->counterMoves) {
+  if (move_is_ok((ss-1)->currentMove)) {
     Square prevSq = to_sq((ss-1)->currentMove);
     (*pos->counterMoves)[piece_on(prevSq)][prevSq] = move;
   }
 
   // Decrease all the other played quiet moves
   for (int i = 0; i < quietsCnt; i++) {
-    hs_update(*pos->history, c, quiets[i], -bonus);
+    history_update(*pos->history, c, quiets[i], -bonus);
     update_cm_stats(ss, moved_piece(quiets[i]), to_sq(quiets[i]), -bonus);
   }
 }

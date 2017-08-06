@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2017 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -25,52 +25,24 @@
 
 #define HistoryStats_Max ((Value)(1<<28))
 
-// An insertion sort, which sorts moves in descending order up to and including a given limit.
-// The order of moves smaller than the limit is left unspecified.
-// To keep the implementation simple, *begin is always included in the list of sorted moves.
+// An insertion sort which sorts moves in descending order up to and
+// including a given limit. The order of moves smaller than the limit is
+// left unspecified. To keep the implementation simple, *begin is always
+// included in the list of sorted moves.
 
 INLINE void partial_insertion_sort(ExtMove *begin, ExtMove *end, Value limit)
 {
-  for (ExtMove *sortedEnd = begin + 1, *p = begin + 1; p < end; p++) 
-       if (p->value >= limit)
-  {
-    ExtMove tmp = *p, *q;
-	*p = *sortedEnd;
-    for (q = sortedEnd; q != begin && (q-1)->value < tmp.value; --q)
-    *q = *(q-1);
-    *q = tmp;
-	++sortedEnd;
-  }
+  for (ExtMove *sortedEnd = begin + 1, *p = begin + 1; p < end; p++)
+    if (p->value >= limit) {
+      ExtMove tmp = *p, *q;
+      *p = *sortedEnd;
+      for (q = sortedEnd; q != begin && (q-1)->value < tmp.value; q--)
+        *q = *(q-1);
+      *q = tmp;
+      sortedEnd++;
+    }
 }
 
-// Our non-stable partition function, the one that Stockfish uses.
-
-INLINE ExtMove *partition(ExtMove *first, ExtMove *last)
-{
-  ExtMove tmp;
-
-  while (1) {
-    while (1)
-      if (first == last)
-        return first;
-      else if (first->value > 0)
-        first++;
-      else
-        break;
-    last--;
-    while (1)
-      if (first == last)
-        return first;
-      else if (!(last->value > 0))
-        last--;
-      else
-        break;
-    tmp = *first;
-    *first = *last;
-    *last = tmp;
-    first++;
-  }
-}
 
 // pick_best() finds the best move in the range (begin, end).
 
@@ -113,11 +85,6 @@ static void score_quiets(const Pos *pos)
   CounterMoveStats *fmh = (st-2)->counterMoves;
   CounterMoveStats *fmh2 = (st-4)->counterMoves;
 
-  CounterMoveStats *tmp = &(*pos->counterMoveHistory)[0][0];
-  if (!cmh) cmh = tmp;
-  if (!fmh) fmh = tmp;
-  if (!fmh2) fmh2 = tmp;
-
   uint32_t c = pos_stm();
 
   for (ExtMove *m = st->cur; m < st->endMoves; m++) {
@@ -127,14 +94,15 @@ static void score_quiets(const Pos *pos)
     m->value =  (*cmh)[piece_on(from)][to]
               + (*fmh)[piece_on(from)][to]
               + (*fmh2)[piece_on(from)][to]
-              + hs_get(*history, c, move);
+              + history_get(*history, c, move);
   }
 }
 
 static void score_evasions(const Pos *pos)
 {
   Stack *st = pos->st;
-  // Try captures ordered by MVV/LVA, then non-captures ordered by stats heuristics
+  // Try captures ordered by MVV/LVA, then non-captures ordered by
+  // stats heuristics.
 
   HistoryStats *history = pos->history;
   uint32_t c = pos_stm();
@@ -144,7 +112,7 @@ static void score_evasions(const Pos *pos)
       m->value =  PieceValue[MG][piece_on(to_sq(m->move))]
                 - (Value)type_of_p(moved_piece(m->move)) + HistoryStats_Max;
     else
-       m->value =  hs_get(*history, c, m->move);
+      m->value = history_get(*history, c, m->move);
 }
 
 
@@ -208,18 +176,17 @@ Move next_move(const Pos *pos, int skipQuiets)
     st->endMoves = generate_quiets(pos, st->cur);
     score_quiets(pos);
     partial_insertion_sort(st->cur, st->endMoves,
-                           st->depth < 3 * ONE_PLY ? VALUE_ZERO : (Value)INT_MIN);
+                           st->depth < 3 * ONE_PLY ? VALUE_ZERO : INT_MIN);
     st->stage++;
 
   case ST_QUIET:
-    while (    st->cur < st->endMoves 
- 	       && (!skipQuiets || st->cur->value >= VALUE_ZERO))
- 	{ 
- 	 move = (st->cur++)->move;
- 	 if (   move != st->ttMove && move != st->killers[0]
-         && move != st->killers[1]  && move != st->countermove)
-          return move;
- 	}
+    while (    st->cur < st->endMoves
+           && (!skipQuiets || st->cur->value >= VALUE_ZERO)) {
+      move = (st->cur++)->move;
+      if (   move != st->ttMove && move != st->killers[0]
+          && move != st->killers[1] && move != st->countermove)
+        return move;
+    }
     st->stage++;
     st->cur = (st-1)->endMoves; // Return to bad captures.
 

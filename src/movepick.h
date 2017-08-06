@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2017 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -30,32 +30,26 @@
 
 #define stats_clear(s) memset(s, 0, sizeof(*s))
 
-INLINE void hs_update(HistoryStats hs, int c, Move m, Value v)
-{
-  int w = v >= 0 ? v : -v;
-  const int denom = 324;
-  
-  assert(w <= denom); // Needed for stability.
-
-  m &= 4095;
-  hs[c][m] -= hs[c][m] * w / denom;
-  hs[c][m] += ((int)v) * 32;
-}
- 
-INLINE Value hs_get(HistoryStats hs, int c, Move m)
-{
-  return hs[c][m & 4095];
-}
-
 INLINE void cms_update(CounterMoveStats cms, Piece pc, Square to, Value v)
 {
   int w = v >= 0 ? v : -v;
-  const int denom = 936;
-  
-  assert(w <= denom);
 
-  cms[pc][to] -= cms[pc][to] * w / denom;
+  cms[pc][to] -= cms[pc][to] * w / 936;
   cms[pc][to] += ((int)v) * 32;
+}
+
+INLINE void history_update(HistoryStats history, int c, Move m, Value v)
+{
+  int w = v >= 0 ? v : -v;
+
+  m &= 4095;
+  history[c][m] -= history[c][m] * w / 324;
+  history[c][m] += ((int)v) * 32;
+}
+
+INLINE Value history_get(HistoryStats history, int c, Move m)
+{
+  return history[c][m & 4095];
 }
 
 #define ST_MAIN_SEARCH             0
