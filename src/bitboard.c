@@ -26,7 +26,7 @@ uint8_t PopCnt16[1 << 16];
 #endif
 int SquareDistance[64][64];
 
-static int RookDeltas[] = { DELTA_N,  DELTA_E,  DELTA_S,  DELTA_W };
+static int RookDeltas[] = { DELTA_N,  DELTA_E,  DELTA_S,  DELTA_W  };
 static int BishopDeltas[] = { DELTA_NE, DELTA_SE, DELTA_SW, DELTA_NW };
 
 static Bitboard sliding_attack(int deltas[], Square sq, Bitboard occupied)
@@ -223,20 +223,21 @@ void bitboards_init()
                        | ((sq_bb(s) << 1) & ~FileABB);
 #endif
 
-  int steps[][5] = { {0}, { 7, 9 }, { 6, 10, 15, 17 }, {0}, {0}, {0}, { 1, 7, 8, 9 } };
+  int steps[][5] = {
+    {0}, { 7, 9 }, { 6, 10, 15, 17 }, {0}, {0}, {0}, { 1, 7, 8, 9 }
+  };
 
   for (int c = 0; c < 2; c++)
     for (int pt = PAWN; pt <= KING; pt++)
-      for (int s = SQ_A1; s < 64; s++)
+      for (int s = 0; s < 64; s++)
         for (int i = 0; steps[pt][i]; i++) {
           Square to = s + (Square)(c == WHITE ? steps[pt][i] : -steps[pt][i]);
 
-          if (square_is_ok(to) && distance(s, to) < 3)
-          {
-              if (pt == PAWN)
-                  PawnAttacks[c][s] |= sq_bb(to);
-              else
-                  PseudoAttacks[pt][s] |= sq_bb(to);
+          if (square_is_ok(to) && distance(s, to) < 3) {
+            if (pt == PAWN)
+              PawnAttacks[c][s] |= sq_bb(to);
+            else
+              PseudoAttacks[pt][s] |= sq_bb(to);
           }
         }
 
