@@ -96,16 +96,20 @@ static Option options_map[] = {
   { "MultiPV", OPT_TYPE_SPIN, 1, 1, 500, NULL, NULL, 0, NULL },
   { "Repetition Fix", OPT_TYPE_CHECK, 0, 0, 0, NULL, NULL, 0, NULL },
   { "Skill Level", OPT_TYPE_SPIN, 20, 0, 20, NULL, NULL, 0, NULL },
-  { "Move Overhead", OPT_TYPE_SPIN, 60, 0, 5000, NULL, NULL, 0, NULL },
+  { "Move Overhead", OPT_TYPE_SPIN, 30, 0, 5000, NULL, NULL, 0, NULL },
   { "nodestime", OPT_TYPE_SPIN, 0, 0, 10000, NULL, NULL, 0, NULL },
   { "UCI_Chess960", OPT_TYPE_CHECK, 0, 0, 0, NULL, NULL, 0, NULL },
   { "SyzygyPath", OPT_TYPE_STRING, 0, 0, 0, "<empty>", on_tb_path, 0, NULL },
   { "SyzygyProbeDepth", OPT_TYPE_SPIN, 1, 1, 100, NULL, NULL, 0, NULL },
   { "Syzygy50MoveRule", OPT_TYPE_CHECK, 1, 0, 0, NULL, NULL, 0, NULL },
   { "SyzygyProbeLimit", OPT_TYPE_SPIN, 6, 0, 6, NULL, NULL, 0, NULL },
-  { "LargePages", OPT_TYPE_CHECK, 1, 0, 0, NULL, on_largepages, 0, NULL },
+  { "LargePages", OPT_TYPE_CHECK, 0, 0, 0, NULL, on_largepages, 0, NULL },
   { "NUMA", OPT_TYPE_STRING, 0, 0, 0, "all", on_numa, 0, NULL },
-  { NULL }
+  { "Fast_Play", OPT_TYPE_CHECK, 1, 0, 1, NULL, on_clear_hash, 0, NULL },
+  { "UCI_Limit_Strength", OPT_TYPE_CHECK, 0, 0, 0, NULL, NULL, 0, NULL },
+  { "UCI_Elo",OPT_TYPE_SPIN, 1200, 1200, 2800, NULL, NULL, 0, NULL },
+  { "UCI_Elo_Delay", OPT_TYPE_CHECK, 0, 0, 0, NULL, NULL, 0, NULL },
+  {NULL}
 };
 
 

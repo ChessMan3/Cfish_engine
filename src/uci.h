@@ -55,6 +55,10 @@ typedef void (*OnChange)(Option *);
 #define OPT_SYZ_PROBE_LIMIT 15
 #define OPT_LARGE_PAGES     16
 #define OPT_NUMA            17
+#define OPT_FAST_PLAY       18
+#define OPT_UCI_LIMIT_STRENGTH  19
+#define OPT_UCI_ELO             20
+#define OPT_UCI_ELO_DELAY       21
 
 struct Option {
   char *name;
@@ -73,9 +77,6 @@ int option_value(int opt);
 char *option_string_value(int opt);
 void option_set_value(int opt, int value);
 int option_set_by_name(char *name, char *value);
-
-void setoption(char *str);
-void position(Pos *pos, char *str);
 
 void uci_loop(int argc, char* argv[]);
 char *uci_value(char *str, Value v);

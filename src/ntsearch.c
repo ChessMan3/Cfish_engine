@@ -26,7 +26,7 @@ Value search_NonPV(Pos *pos, Stack *ss, Value alpha, Depth depth, int cutNode)
   Key posKey;
   Move ttMove, move, excludedMove, bestMove;
   Depth extension, newDepth;
-  Value bestValue, value, ttValue, eval, maxValue;
+  Value bestValue, value, ttValue, eval;
   int ttHit, inCheck, givesCheck, singularExtensionNode, improving;
   int captureOrPromotion, doFullDepthSearch, moveCountPruning, skipQuiets;
   int ttCapture;
@@ -38,7 +38,11 @@ Value search_NonPV(Pos *pos, Stack *ss, Value alpha, Depth depth, int cutNode)
   moveCount = quietCount =  ss->moveCount = 0;
   ss->statScore = 0;
   bestValue = -VALUE_INFINITE;
-  maxValue = VALUE_INFINITE;
+  ss->ply = (ss-1)->ply + 1;	
+  ss->forcedMove = 0;
+  ss->forcingTree = ((ss - 2)->forcingTree && (ss - 2)->forcedMove) // Recursive forcing tree.
+	  || (ss->ply == 2 && (ss - 1)->moveCount > 1)          // Offensive forcing tree
+	  || (ss->ply == 3 && (ss - 2)->moveCount == 1);     // Defensive forcing tree
 
   // Check for the available remaining time
   if (load_rlx(pos->resetCalls)) {
@@ -149,27 +153,11 @@ Value search_NonPV(Pos *pos, Stack *ss, Value alpha, Depth depth, int cutNode)
                : v >  drawScore ?  VALUE_MATE - MAX_PLY - ss->ply
                                 :  VALUE_DRAW + 2 * v * drawScore;
 
-        int b =  v < -drawScore ? BOUND_UPPER
-               : v >  drawScore ? BOUND_LOWER : BOUND_EXACT;
-
-        if (    b == BOUND_EXACT
-            || (b == BOUND_LOWER ? value >= beta : value <= alpha))
-        {
-          tte_save(tte, posKey, value_to_tt(value, ss->ply), BOUND_EXACT,
+        tte_save(tte, posKey, value_to_tt(value, ss->ply), BOUND_EXACT,
                  min(DEPTH_MAX - ONE_PLY, depth + 6 * ONE_PLY),
                  0, VALUE_NONE, tt_generation());
 
-          return value;
-        }
-
-        if (PvNode) {
-          if (b == BOUND_LOWER) {
-            bestValue = value;
-            if (bestValue > alpha)
-              alpha = bestValue;
-          } else
-            maxValue = value;
-        }
+        return value;
       }
     }
   }
@@ -202,6 +190,7 @@ Value search_NonPV(Pos *pos, Stack *ss, Value alpha, Depth depth, int cutNode)
   // Step 6. Razoring (skipped when in check)
   if (   !PvNode
       &&  depth < 4 * ONE_PLY
+	  &&  pos_non_pawn_material(pos_stm()) > BishopValueEg
       &&  eval + razor_margin[depth / ONE_PLY] <= alpha) {
 
     if (depth <= ONE_PLY)
@@ -225,7 +214,10 @@ Value search_NonPV(Pos *pos, Stack *ss, Value alpha, Depth depth, int cutNode)
   if (   !PvNode
       &&  eval >= beta
       && (ss->staticEval >= beta - 35 * (depth / ONE_PLY - 6) || depth >= 13 * ONE_PLY)
-      &&  pos_non_pawn_material(pos_stm())) {
+	  && pos->selDepth + 3 * ONE_PLY > pos->rootDepth
+	  && !(depth > 4 * ONE_PLY && pos->moveList < 6)
+	  && pos_non_pawn_material(pos_stm()) > (depth > 12 * ONE_PLY) * BishopValueMg )
+    {
 
     assert(eval - beta >= 0);
 
@@ -251,6 +243,9 @@ Value search_NonPV(Pos *pos, Stack *ss, Value alpha, Depth depth, int cutNode)
 
       if (depth < 12 * ONE_PLY && abs(beta) < VALUE_KNOWN_WIN)
          return nullValue;
+		
+	  if (pos_non_pawn_material(pos_stm()) <=  BishopValueEg)
+		  R =  min(R/2, 4 * ONE_PLY);
 
       // Do verification search at high depths
       ss->skipEarlyPruning = 1;
@@ -317,7 +312,6 @@ moves_loop: // When in check search starts from here.
   mp_init(pos, ttMove, depth);
   value = bestValue; // Workaround a bogus 'uninitialized' warning under gcc
   improving =   ss->staticEval >= (ss-2)->staticEval
-          /* || ss->staticEval == VALUE_NONE Already implicit in the previous condition */
              ||(ss-2)->staticEval == VALUE_NONE;
 
   singularExtensionNode =   !rootNode
@@ -384,7 +378,7 @@ moves_loop: // When in check search starts from here.
     // result is lower than ttValue minus a margin then we extend the ttMove.
     if (    singularExtensionNode
         &&  move == ttMove
-        && !extension
+        //&& !extension
         &&  is_legal(pos, move))
     {
       Value rBeta = max(ttValue - 2 * depth / ONE_PLY, -VALUE_MATE);
@@ -411,6 +405,13 @@ moves_loop: // When in check search starts from here.
              && !moveCountPruning
              &&  see_test(pos, move, 0))
       extension = ONE_PLY;
+	else if (    ss->forcingTree && (ss - 1)->newDepth - depth > 1
+			 && !moveCountPruning)
+		extension = ONE_PLY;
+	else if ( far_advanced_pawn_push(pos, move)
+			  && !moveCountPruning
+			  && pos_non_pawn_material(pos_stm()) <=  BishopValueEg)
+	  extension = ONE_PLY;
 
     // Calculate new depth for this move
     newDepth = depth - ONE_PLY + extension;
@@ -458,7 +459,8 @@ moves_loop: // When in check search starts from here.
 //               && !see_test(pos, move, -35 * depth / ONE_PLY * depth / ONE_PLY))
       else if (    depth < 7 * ONE_PLY
                && !extension
-               && !see_test(pos, move, -PawnValueEg * (depth / ONE_PLY)))
+			   && !see_test(pos, move, -35 * depth / ONE_PLY * depth / ONE_PLY))
+               //&& !see_test(pos, move, -PawnValueEg * (depth / ONE_PLY)))
         continue;
     }
 
@@ -490,9 +492,7 @@ moves_loop: // When in check search starts from here.
         &&  moveCount > 1
         && (!captureOrPromotion || moveCountPruning))
     {
-      int mch = max(1, moveCount - (ss-1)->moveCount / 16);
-      Depth r = reduction(improving, depth, mch, NT);
-
+      Depth r = reduction(improving, depth, moveCount, NT);
       if (captureOrPromotion)
         r -= r ? ONE_PLY : DEPTH_ZERO;
       else {
@@ -511,22 +511,30 @@ moves_loop: // When in check search starts from here.
         else if (   type_of_m(move) == NORMAL
                  && !see_test(pos, make_move(to_sq(move), from_sq(move)), 0))
           r -= 2 * ONE_PLY;
+		  
+		if ((pos_nodes_searched() % 2097152) == 0) {
+			int diff =  ss->statScore - pos->meanH;
+			pos->meanH = ( (pos->meanH  * 4194304) + diff ) /4194304;
+			ss->rHist = (ss->statScore - pos->meanH);
+		}
 
         ss->statScore =  (*cmh )[movedPiece][to_sq(move)]
                        + (*fmh )[movedPiece][to_sq(move)]
                        + (*fmh2)[movedPiece][to_sq(move)]
-                       + (*pos->history)[pos_stm() ^ 1][from_to(move)]
-                       - 4000; // Correction factor.
+					   + (*pos->history)[pos_stm() ^ 1][from_to(move)];
 
         // Decrease/increase reduction by comparing with opponent's stat score.
         if (ss->statScore > 0 && (ss-1)->statScore < 0)
           r -= ONE_PLY;
 
-        else if (ss->statScore < 0 && (ss-1)->statScore > 0)
-          r += ONE_PLY;
-
-        // Decrease/increase reduction for moves with a good/bad history.
-        r = max(DEPTH_ZERO, (r / ONE_PLY - ss->statScore / 20000) * ONE_PLY);
+		else if (ss->statScore < 0 && ss->statScore < (ss-1)->statScore )
+			r += ONE_PLY;
+  
+		else if (ss->statScore > 0 && ss->statScore > (ss-1)->statScore)
+			r -= ONE_PLY;
+		
+		r = max(DEPTH_ZERO, (r / ONE_PLY - (ss->statScore - ss->rHist ) / 32768 ) * ONE_PLY );
+		  
       }
 
       Depth d = max(newDepth - r, ONE_PLY);
@@ -656,9 +664,6 @@ moves_loop: // When in check search starts from here.
            && !captured_piece()
            && move_is_ok((ss-1)->currentMove))
     update_cm_stats(ss-1, piece_on(prevSq), prevSq, stat_bonus(depth));
-
-  if (PvNode && bestValue > maxValue)
-     bestValue = maxValue;
 
   if (!excludedMove)
     tte_save(tte, posKey, value_to_tt(bestValue, ss->ply),

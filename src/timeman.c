@@ -65,7 +65,10 @@ int remaining(int myTime, int myInc, int moveOverhead, int movesToGo,
   if (type == OptimumTime && ponder)
     ratio *= 1.25;
 
-  return time;
+  if (type == MaxTime)
+    time -= 10;
+
+  return max(0, time);
 }
 
 // tm_init() is called at the beginning of the search and calculates the
