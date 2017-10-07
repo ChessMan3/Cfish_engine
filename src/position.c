@@ -423,23 +423,6 @@ void pos_fen(const Pos *pos, char *str)
 }
 
 
-// game_phase() calculates the game phase interpolating total non-pawn
-// material between endgame and midgame limits.
-
-int game_phase(const Pos *pos)
-{
-  Value npm = pos_non_pawn_material(WHITE) + pos_non_pawn_material(BLACK);
-
-  if (npm > MidgameLimit)
-      npm = MidgameLimit;
-
-  if (npm < EndgameLimit)
-      npm = EndgameLimit;
-
-  return ((npm - EndgameLimit) * PHASE_MIDGAME) / (MidgameLimit - EndgameLimit);
-}
-
-
 // Turning slider_blockers() into an inline function was slower, even
 // though it should only add a single slightly optimised copy to evaluate().
 #if 1
@@ -585,7 +568,7 @@ int is_pseudo_legal_old(Pos *pos, Move m)
            && is_empty(to - pawn_push(us))))
       return 0;
   }
-  else if (!(attacks_from(type_of_p(pc), from) & sq_bb(to)))
+  else if (!(attacks_from(pc, from) & sq_bb(to)))
     return 0;
 
   // Evasions generator already takes care to avoid some kind of illegal moves
@@ -1063,7 +1046,7 @@ void do_move(Pos *pos, Move m, int givesCheck)
 
     // Update pawn hash key and prefetch access to pawnsTable
     st->pawnKey ^= zob.psq[piece][from] ^ zob.psq[piece][to];
-    prefetch(&pos->pawnTable[st->pawnKey & (PAWN_ENTRIES -1)]);
+    prefetch2(&pos->pawnTable[st->pawnKey & (PAWN_ENTRIES -1)]);
 
     // Reset ply counters.
     st->plyCounters = 0;
@@ -1220,18 +1203,13 @@ Key key_after(const Pos *pos, Move m)
 // Test whether SEE >= value.
 int see_test(const Pos *pos, Move m, int value)
 {
-  if (unlikely(type_of_m(m) == CASTLING))
+  if (unlikely(type_of_m(m) != NORMAL))
     return 0 >= value;
 
   Square from = from_sq(m), to = to_sq(m);
-  Bitboard occ = pieces();
+  Bitboard occ;
 
   int swap = PieceValue[MG][piece_on(to)] - value;
-  if (unlikely(type_of_m(m) == ENPASSANT)) {
-    assert(pos_stm() == color_of(piece_on(from)));
-    occ ^= sq_bb(to - pawn_push(pos_stm())); // Remove the captured pawn
-    swap += PawnValueMg;
-  }
   if (swap < 0)
     return 0;
 
@@ -1239,7 +1217,7 @@ int see_test(const Pos *pos, Move m, int value)
   if (swap <= 0)
     return 1;
 
-  occ ^= sq_bb(from) ^ sq_bb(to);
+  occ = pieces() ^ sq_bb(from) ^ sq_bb(to);
   uint32_t stm = color_of(piece_on(from));
   Bitboard attackers = attackers_to_occ(to, occ), stmAttackers;
   int res = 1;

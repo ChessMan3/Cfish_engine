@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2016 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2017 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -197,6 +197,13 @@ void go(Pos *pos, char *str)
       Limits.infinite = 1;
     else if (strcmp(token, "ponder") == 0)
       Limits.ponder = 1;
+    else if (strcmp(token, "perft") == 0) {
+      char str_buf[64];
+      sprintf(str_buf, "%d %d %d current perft", option_value(OPT_HASH),
+                    option_value(OPT_THREADS), atoi(strtok(NULL, " \t")));
+      benchmark(pos, str_buf);
+      return;
+    }
   }
 
   start_thinking(pos);
@@ -326,16 +333,11 @@ void uci_loop(int argc, char **argv)
       fflush(stdout);
     }
     else if (strcmp(token, "go") == 0)        go(&pos, str);
-    else if (strcmp(token, "position") == 0) {
-		     position(&pos, str);
-	         if (option_value(OPT_CLEAN_SEARCH))
-		        search_clear();
-            } 
+    else if (strcmp(token, "position") == 0)  position(&pos, str);
     else if (strcmp(token, "setoption") == 0) setoption(str);
 
     // Additional custom non-UCI commands, useful for debugging
     else if (strcmp(token, "bench") == 0)     benchmark(&pos, str);
-	else if (strcmp(token, "b") == 0)     benchmark(&pos, str);
     else if (strcmp(token, "d") == 0)         print_pos(&pos);
     else if (strcmp(token, "perft") == 0) {
       sprintf(str_buf, "%d %d %d current perft", option_value(OPT_HASH),
